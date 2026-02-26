@@ -14,7 +14,7 @@ ln -sfn /data/.linuxbrew /home/linuxbrew/.linuxbrew
 # --- cron setup (persistent crontab on /data volume) ---
 CRONTAB_FILE="/data/crontab"
 if [ ! -f "$CRONTAB_FILE" ]; then
-  printf "# Persistent crontab for openclaw user – edits survive redeployments\n# Example: run a script every day at 3 AM UTC\n# 0 3 * * * /home/linuxbrew/.linuxbrew/bin/brew update >/dev/null 2>&1\n" > "$CRONTAB_FILE"
+  printf "# Persistent crontab for openclaw user – edits survive redeployments\n# Example: run a script every day at 3 AM UTC\n# 0 3 * * * /home/linuxbrew/.linuxbrew/bin/brew update >/dev/null 2>&1\n# GitHub skill token refresh (every 45 mins)\n*/45 * * * * /data/.openclaw/github-skill/token-refresh.sh\n" > "$CRONTAB_FILE"
   chown openclaw:openclaw "$CRONTAB_FILE"
 fi
 crontab -u openclaw "$CRONTAB_FILE"
