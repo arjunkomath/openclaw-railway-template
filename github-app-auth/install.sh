@@ -54,3 +54,5 @@ fi
 echo "Minted installation token; GH_TOKEN set."
 EOF
 chmod +x /data/private/github-app-auth/token-refresh.sh
+
+echo "Now you must install the GitHub App in your GitHub account and add a private key to the "
