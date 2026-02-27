@@ -38,6 +38,8 @@ COPY --chmod=640 github-app-auth/crontab /etc/cron.d/github-app-auth
 # Executable scripts
 COPY --chmod=700 github-app-auth/scripts ./github-app-auth
 
+RUN ls -la
+
 USER openclaw
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
