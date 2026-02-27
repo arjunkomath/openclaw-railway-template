@@ -33,8 +33,8 @@ RUN useradd -m -s /bin/bash openclaw \
 
 COPY github-app-auth/crontab /root/crontab
 
-COPY github-app-auth /data/private/github-app-auth
-RUN chmod +x /data/private/github-app-auth/install.sh /data/private/github-app-auth/token-refresh.sh
+COPY --chmod=640 github-app-auth /etc/cron.d/github-app-auth
+COPY --chmod=755 github-app-auth/install.sh github-app-auth/token-refresh.sh /app/github-app-auth/
 
 USER openclaw
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
