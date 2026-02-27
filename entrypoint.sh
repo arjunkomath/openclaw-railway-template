@@ -17,4 +17,7 @@ chmod 700 $PRIVATE_DIR
 rm -rf /home/linuxbrew/.linuxbrew
 ln -sfn /data/.linuxbrew /home/linuxbrew/.linuxbrew
 
+cron
+echo "[entrypoint] cron started"
+
 exec gosu openclaw node src/server.js
