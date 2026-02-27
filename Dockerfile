@@ -33,7 +33,9 @@ RUN useradd -m -s /bin/bash openclaw \
 
 COPY github-app-auth/crontab /root/crontab
 
+# Requires mode 640 to be readable by cron
 COPY --chmod=640 github-app-auth/crontab /etc/cron.d/github-app-auth
+# Executable scripts
 COPY --chmod=700 github-app-auth/scripts ./github-app-auth
 
 USER openclaw
