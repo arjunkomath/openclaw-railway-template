@@ -1,1 +1,1 @@
-* * * * * /root/github-app-auth/token-refresh.sh >> /var/log/cron.log 2>&1
+* * * * * root /root/github-app-auth/token-refresh.sh >> /var/log/cron.log 2>&1
