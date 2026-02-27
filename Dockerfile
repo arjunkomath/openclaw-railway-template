@@ -22,7 +22,7 @@ RUN corepack enable && pnpm install --frozen-lockfile --prod
 COPY src ./src
 COPY entrypoint.sh ./entrypoint.sh
 RUN echo "OPENCLAW_STATE_DIR: $OPENCLAW_STATE_DIR"
-ENV OPENCLAW_STATE_DIR=/data/.openclaw
+ENV OPENCLAW_STATE_DIR=/data/.openclaw2
 RUN echo "OPENCLAW_STATE_DIR: $OPENCLAW_STATE_DIR"
 
 RUN useradd -m -s /bin/bash openclaw \
