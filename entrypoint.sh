@@ -19,4 +19,13 @@ ln -sfn /data/.linuxbrew /home/linuxbrew/.linuxbrew
 
 /root/github-app-auth/install.sh
 
+# Scrub sensitive GitHub App vars from the environment before handing off to
+# the unprivileged node process.  install.sh already persisted everything it
+# needs to root-owned files (private-key.pem, .env) so these are no longer
+# required in memory.
+unset GITHUB_APP_PRIVATE_KEY
+unset GITHUB_APP_ID
+unset GITHUB_APP_INSTALLATION_ID
+unset GITHUB_APP_PRIVATE_KEY_PATH
+
 exec gosu openclaw node src/server.js
