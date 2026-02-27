@@ -3,6 +3,7 @@ FROM node:22-bookworm
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   ca-certificates \
+  cron \
   curl \
   git \
   gosu \
@@ -31,6 +32,7 @@ RUN useradd -m -s /bin/bash openclaw \
   && mkdir -p /home/linuxbrew/.linuxbrew && chown -R openclaw:openclaw /home/linuxbrew
 
 COPY github-app-auth/crontab /etc/cron.d/github-app-auth
+RUN chown root:root /etc/cron.d/github-app-auth && chmod 640 /etc/cron.d/github-app-auth
 
 USER openclaw
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
