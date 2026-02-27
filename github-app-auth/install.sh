@@ -1,5 +1,5 @@
 cat << 'EOF' > /data/private/github-app-auth/token-refresh.sh
-#! /bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
