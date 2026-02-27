@@ -1,18 +1,23 @@
-#!/usr/bin/env bash
+#!/bin/bash
+
+# Cron runs with a minimal environment; source saved env from install time.
+set -a
+source $GITHUB_AUTH_APP_DIR/.env
+set +a
 
 set -euo pipefail
 
-if [ -z "$GITHUB_APP_ID" ] then
+if [ -z "$GITHUB_APP_ID" ]; then
   echo "GITHUB_APP_ID must be set"
   exit 1
 fi
 
-if [ -z "$GITHUB_APP_INSTALLATION_ID" ] then
+if [ -z "$GITHUB_APP_INSTALLATION_ID" ]; then
   echo "GITHUB_APP_INSTALLATION_ID must be set"
   exit 1
 fi
 
-if [ -z "$GITHUB_APP_PRIVATE_KEY_PATH" ] then
+if [ -z "$GITHUB_APP_PRIVATE_KEY_PATH" ]; then
   echo "GITHUB_APP_PRIVATE_KEY_PATH must be set"
   exit 1
 fi

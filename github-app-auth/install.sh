@@ -1,5 +1,25 @@
-cat << 'EOF' > /data/private/github-app-auth/token-refresh.sh
-#!/usr/bin/env bash
+#! /bin/bash
+
+cat << 'EOF' > $GITHUB_AUTH_APP_DIR/private-key.pem
+${GITHUB_APP_PRIVATE_KEY}
+EOF
+
+# Snapshot the current environment so the cron job can source it reliably.
+# /proc/1/environ is not always readable from cron (permissions / namespace).
+cat << 'EOF' > $GITHUB_AUTH_APP_DIR/.env
+GITHUB_AUTH_APP_DIR=${GITHUB_AUTH_APP_DIR}
+GITHUB_APP_ID=${GITHUB_APP_ID}
+GITHUB_APP_INSTALLATION_ID=${GITHUB_APP_INSTALLATION_ID}
+GITHUB_APP_PRIVATE_KEY_PATH=${GITHUB_APP_PRIVATE_KEY_PATH}
+EOF
+
+cat << 'EOF' > $GITHUB_AUTH_APP_DIR/token-refresh.sh
+#!/bin/bash
+
+# Cron runs with a minimal environment; source saved env from install time.
+set -a
+source $GITHUB_AUTH_APP_DIR/.env
+set +a
 
 set -euo pipefail
 
@@ -49,3 +69,14 @@ fi
 
 echo "Minted installation token; GH_TOKEN set."
 EOF
+
+chmod +x $GITHUB_AUTH_APP_DIR/token-refresh.sh
+
+
+CRONTAB_FILE=/root/crontab
+if [ -f $CRONTAB_FILE ]; then
+  printf "* * * * * $GITHUB_AUTH_APP_DIR/token-refresh.sh >> /var/log/cron.log 2>&1 \n" > $CRONTAB_FILE
+fi
+crontab $CRONTAB_FILE
+cron
+echo "[entrypoint] cron started"
