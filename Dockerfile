@@ -3,7 +3,6 @@ FROM node:22-bookworm
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   ca-certificates \
-  cron \
   curl \
   git \
   gosu \
@@ -26,14 +25,11 @@ COPY entrypoint.sh ./entrypoint.sh
 RUN useradd -m -s /bin/bash openclaw \
   && chown -R openclaw:openclaw /app \
   && mkdir -p /data && chown openclaw:openclaw /data \
+  # important: keep credentials directory as root:root to avoid permission issues
   && mkdir -p /data/credentials && chown root:root /data/credentials && chmod 700 /data/credentials \
   && mkdir -p /home/linuxbrew/.linuxbrew && chown -R openclaw:openclaw /home/linuxbrew
 
-WORKDIR /data/workspace/skills
-COPY github-app-auth ./github-app-auth
-WORKDIR /app
-
-COPY github-app-auth ./github-app-auth
+COPY github-app-auth /data/workspace/skills/github-app-auth
 
 USER openclaw
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
