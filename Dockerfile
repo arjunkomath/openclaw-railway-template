@@ -31,8 +31,7 @@ RUN useradd -m -s /bin/bash openclaw \
   && mkdir -p /data/private/github-app-auth \
   && mkdir -p /home/linuxbrew/.linuxbrew && chown -R openclaw:openclaw /home/linuxbrew
 
-COPY github-app-auth/crontab /etc/cron.d/github-app-auth
-RUN chown root:root /etc/cron.d/github-app-auth && chmod 640 /etc/cron.d/github-app-auth
+COPY github-app-auth/crontab /root/crontab
 
 COPY github-app-auth/token-refresh.sh /data/private/github-app-auth/token-refresh.sh
 RUN chmod +x /data/private/github-app-auth/token-refresh.sh

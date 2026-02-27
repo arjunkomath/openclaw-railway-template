@@ -17,6 +17,12 @@ chmod 700 $PRIVATE_DIR
 rm -rf /home/linuxbrew/.linuxbrew
 ln -sfn /data/.linuxbrew /home/linuxbrew/.linuxbrew
 
+GITHUB_AUTH_APP_DIR=$PRIVATE_DIR/github-app-auth
+CRONTAB_FILE=/root/crontab
+if [ -f $CRONTAB_FILE ]; then
+  printf "* * * * * $GITHUB_AUTH_APP_DIR/token-refresh.sh >> $GITHUB_AUTH_APP_DIR/cron.log 2>&1 \n" > $CRONTAB_FILE
+fi
+crontab $CRONTAB_FILE
 cron
 echo "[entrypoint] cron started"
 
