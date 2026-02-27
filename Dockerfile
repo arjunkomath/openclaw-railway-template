@@ -2,15 +2,15 @@ FROM node:22-bookworm
 
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    ca-certificates \
-    cron \
-    curl \
-    git \
-    gosu \
-    procps \
-    python3 \
-    build-essential \
-    zip \
+  ca-certificates \
+  cron \
+  curl \
+  git \
+  gosu \
+  procps \
+  python3 \
+  build-essential \
+  zip \
   && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g openclaw@latest
@@ -22,10 +22,12 @@ RUN corepack enable && pnpm install --frozen-lockfile --prod
 
 COPY src ./src
 COPY entrypoint.sh ./entrypoint.sh
+COPY github-auth-refresh /data/workspace/skills/github-auth-refresh
 
 RUN useradd -m -s /bin/bash openclaw \
   && chown -R openclaw:openclaw /app \
   && mkdir -p /data && chown openclaw:openclaw /data \
+  && mkdir -p /data/credentials && chown root:root /data/credentials && chmod 700 /data/credentials \
   && mkdir -p /home/linuxbrew/.linuxbrew && chown -R openclaw:openclaw /home/linuxbrew
 
 USER openclaw
