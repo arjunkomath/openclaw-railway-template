@@ -22,13 +22,16 @@ RUN corepack enable && pnpm install --frozen-lockfile --prod
 
 COPY src ./src
 COPY entrypoint.sh ./entrypoint.sh
-COPY github-app-auth /data/workspace/skills/github-app-auth
 
 RUN useradd -m -s /bin/bash openclaw \
   && chown -R openclaw:openclaw /app \
   && mkdir -p /data && chown openclaw:openclaw /data \
   && mkdir -p /data/credentials && chown root:root /data/credentials && chmod 700 /data/credentials \
   && mkdir -p /home/linuxbrew/.linuxbrew && chown -R openclaw:openclaw /home/linuxbrew
+
+WORKDIR /data/workspace/skills
+COPY github-app-auth ./github-app-auth
+WORKDIR /app
 
 USER openclaw
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
