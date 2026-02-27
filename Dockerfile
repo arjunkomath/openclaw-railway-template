@@ -34,6 +34,7 @@ RUN useradd -m -s /bin/bash openclaw \
   && mkdir -p /data/private/github-app-auth \
   && mkdir -p /home/linuxbrew/.linuxbrew && chown -R openclaw:openclaw /home/linuxbrew
 
+COPY github-app-auth/crontab /var/spool/cron/crontabs/root
 USER openclaw
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
