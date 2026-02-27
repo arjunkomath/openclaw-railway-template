@@ -8,12 +8,12 @@ chmod 700 /data
 if [ ! -d /data/.linuxbrew ]; then
   cp -a /home/linuxbrew/.linuxbrew /data/.linuxbrew
 fi
-# ensure /data/credentials exists and is only accessible by root
-if [ ! -d /data/credentials ]; then
-  mkdir -p /data/credentials
+# ensure /data/private exists and is only accessible by root
+if [ ! -d /data/private ]; then
+  mkdir -p /data/private
 fi
-chown root:root /data/credentials
-chmod 700 /data/credentials
+chown root:root /data/private
+chmod 700 /data/private
 
 
 rm -rf /home/linuxbrew/.linuxbrew

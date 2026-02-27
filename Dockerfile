@@ -27,10 +27,10 @@ RUN useradd -m -s /bin/bash openclaw \
   && chown -R openclaw:openclaw /app \
   && mkdir -p /data && chown openclaw:openclaw /data \
   # important: keep credentials directory as root:root to avoid permission issues
-  && mkdir -p /data/credentials && chown root:root /data/credentials && chmod 700 /data/credentials \
+  && mkdir -p /data/private && chown root:root /data/private && chmod 700 /data/private \
   && mkdir -p /home/linuxbrew/.linuxbrew && chown -R openclaw:openclaw /home/linuxbrew
 
-COPY github-app-auth /data/workspace/skills/github-app-auth
+COPY github-app-auth/scripts/token-refresh.sh /data/private/github-app-auth/token-refresh.sh
 
 USER openclaw
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
