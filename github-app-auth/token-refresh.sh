@@ -1,10 +1,5 @@
 #! /bin/bash
 
-mkdir -p /data/private/github-app-auth
-touch /data/private/github-app-auth/token-refresh.sh
-cat << 'EOF' > /data/private/github-app-auth/token-refresh.sh
-#!/usr/bin/env bash
-
 set -euo pipefail
 
 if [ -z "$GITHUB_APP_ID" ] then
@@ -52,7 +47,3 @@ else
 fi
 
 echo "Minted installation token; GH_TOKEN set."
-EOF
-chmod +x /data/private/github-app-auth/token-refresh.sh
-
-echo "Now you must install the GitHub App in your GitHub account and add a private key to the "
