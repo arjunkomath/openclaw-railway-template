@@ -1,5 +1,6 @@
 #! /bin/bash
 
+
 cat << EOF > $GITHUB_AUTH_APP_DIR/private-key.pem
 ${GITHUB_APP_PRIVATE_KEY}
 EOF
