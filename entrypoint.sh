@@ -17,7 +17,7 @@ chmod 700 $PRIVATE_DIR
 rm -rf /home/linuxbrew/.linuxbrew
 ln -sfn /data/.linuxbrew /home/linuxbrew/.linuxbrew
 
-GITHUB_AUTH_APP_DIR=$PRIVATE_DIR/github-app-auth
+export GITHUB_AUTH_APP_DIR=$PRIVATE_DIR/github-app-auth
 
 $GITHUB_AUTH_APP_DIR/install.sh
 
