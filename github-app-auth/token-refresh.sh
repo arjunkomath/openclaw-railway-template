@@ -2,7 +2,7 @@
 
 # Cron runs with a minimal environment; source saved env from install time.
 set -a
-source $GITHUB_AUTH_APP_DIR/.env
+source /data/private/github-app-auth/.env
 set +a
 
 set -euo pipefail
