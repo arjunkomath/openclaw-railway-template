@@ -73,11 +73,5 @@ EOF
 
 chmod +x $GITHUB_AUTH_APP_DIR/token-refresh.sh
 
-
-CRONTAB_FILE=/root/crontab
-if [ -f $CRONTAB_FILE ]; then
-  printf "* * * * * $GITHUB_AUTH_APP_DIR/token-refresh.sh >> /var/log/cron.log 2>&1 \n" > $CRONTAB_FILE
-fi
-crontab $CRONTAB_FILE
 cron
 echo "[entrypoint] cron started"
