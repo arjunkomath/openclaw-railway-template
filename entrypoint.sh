@@ -17,12 +17,6 @@ chmod 700 $PRIVATE_DIR
 rm -rf /home/linuxbrew/.linuxbrew
 ln -sfn /data/.linuxbrew /home/linuxbrew/.linuxbrew
 
-export GITHUB_AUTH_APP_DIR=$PRIVATE_DIR/github-app-auth
-mkdir -p $GITHUB_AUTH_APP_DIR
-rm -rf $GITHUB_AUTH_APP_DIR
-mv -T /app/github-app-auth $GITHUB_AUTH_APP_DIR
-
-ls -la $GITHUB_AUTH_APP_DIR
-$GITHUB_AUTH_APP_DIR/install.sh
+/root/github-app-auth/install.sh
 
 exec gosu openclaw node src/server.js

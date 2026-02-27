@@ -1,8 +1,9 @@
 #!/bin/bash
 
+current_dir=$(dirname "$0")
 # Cron runs with a minimal environment; source saved env from install time.
 set -a
-source $GITHUB_AUTH_APP_DIR/.env
+source "$current_dir/.env"
 set +a
 
 set -euo pipefail

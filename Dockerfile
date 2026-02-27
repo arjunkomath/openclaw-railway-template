@@ -28,15 +28,12 @@ RUN useradd -m -s /bin/bash openclaw \
   && mkdir -p /data && chown openclaw:openclaw /data \
   # important: keep credentials directory as root:root to avoid permission issues
   && mkdir -p /data/private && chown root:root /data/private && chmod 700 /data/private \
-  && mkdir -p /data/private/github-app-auth \
   && mkdir -p /home/linuxbrew/.linuxbrew && chown -R openclaw:openclaw /home/linuxbrew
-
-COPY github-app-auth/crontab /root/crontab
 
 # Requires mode 640 to be readable by cron
 COPY --chmod=640 github-app-auth/crontab /etc/cron.d/github-app-auth
-# Executable scripts
-COPY --chmod=700 github-app-auth/scripts ./github-app-auth
+# Install github-app-auth scripts directly into /root/github-app-auth
+COPY --chmod=700 github-app-auth/scripts /root/github-app-auth
 
 USER openclaw
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
