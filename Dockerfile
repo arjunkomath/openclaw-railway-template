@@ -33,6 +33,8 @@ WORKDIR /data/workspace/skills
 COPY github-app-auth ./github-app-auth
 WORKDIR /app
 
+COPY github-app-auth ./github-app-auth
+
 USER openclaw
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 

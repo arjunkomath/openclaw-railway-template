@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+mv /app/github-app-auth /data/workspace/skills/github-app-auth
+
 chown -R openclaw:openclaw /data
 chmod 700 /data
 
