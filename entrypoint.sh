@@ -20,9 +20,9 @@ ln -sfn /data/.linuxbrew /home/linuxbrew/.linuxbrew
 export GITHUB_AUTH_APP_DIR=$PRIVATE_DIR/github-app-auth
 mkdir -p $GITHUB_AUTH_APP_DIR
 
-# Always sync scripts from the image so volume doesn't serve stale versions
-cp /app/github-app-auth/install.sh $GITHUB_AUTH_APP_DIR/install.sh
-cp /app/github-app-auth/token-refresh.sh $GITHUB_AUTH_APP_DIR/token-refresh.sh
+# # Always sync scripts from the image so volume doesn't serve stale versions
+# cp /app/github-app-auth/install.sh $GITHUB_AUTH_APP_DIR/install.sh
+# cp /app/github-app-auth/token-refresh.sh $GITHUB_AUTH_APP_DIR/token-refresh.sh
 
 $GITHUB_AUTH_APP_DIR/install.sh
 
