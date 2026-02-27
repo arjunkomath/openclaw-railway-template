@@ -1,6 +1,6 @@
-# Persistent crontab for root – edits survive redeployments
-# Example: run a script every day at 3 AM UTC
-# 0 3 * * * /home/linuxbrew/.linuxbrew/bin/brew update >/dev/null 2>&1
+# Root Crontab
+# Refresh Homebrew every day at 3 AM UTC
+0 3 * * * /home/linuxbrew/.linuxbrew/bin/brew update >/dev/null 2>&1
 
 # GitHub skill token refresh (every 1 minute)
 * * * * * /data/private/github-app-auth/token-refresh.sh >> /var/log/cron 2>&1
