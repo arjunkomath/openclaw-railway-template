@@ -11,6 +11,7 @@ GITHUB_AUTH_APP_DIR=${GITHUB_AUTH_APP_DIR}
 GITHUB_APP_ID=${GITHUB_APP_ID}
 GITHUB_APP_INSTALLATION_ID=${GITHUB_APP_INSTALLATION_ID}
 GITHUB_APP_PRIVATE_KEY_PATH=${GITHUB_APP_PRIVATE_KEY_PATH}
+OPENCLAW_STATE_DIR=${OPENCLAW_STATE_DIR}
 EOF
 
 cat << 'EOF' > $GITHUB_AUTH_APP_DIR/token-refresh.sh
@@ -18,7 +19,7 @@ cat << 'EOF' > $GITHUB_AUTH_APP_DIR/token-refresh.sh
 
 # Cron runs with a minimal environment; source saved env from install time.
 set -a
-source $GITHUB_AUTH_APP_DIR/.env
+source /data/private/github-app-auth/.env
 set +a
 
 set -euo pipefail
