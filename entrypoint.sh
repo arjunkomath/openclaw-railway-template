@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-echo "OPENCLAW_STATE_DIR: $OPENCLAW_STATE_DIR"
-
 chown -R openclaw:openclaw /data
 chmod 700 /data
 
