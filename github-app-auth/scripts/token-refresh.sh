@@ -25,7 +25,7 @@ fi
 
 now=$(date +%s)
 iat=$((now - 60))
-exp=$((now + 540))  # keep < 10 minutes
+exp=$((now + 3600))  # keep < 1 hour
 
 b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
 
