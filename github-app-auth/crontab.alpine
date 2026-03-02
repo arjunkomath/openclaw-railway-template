@@ -1,0 +1,2 @@
+# Mint a new GitHub app installation token every 10 minutes
+*/10 * * * * /root/github-app-auth/token-refresh.sh >> /var/log/github-app-auth-cron.log 2>&1
