@@ -1,4 +1,5 @@
 # OpenClaw Railway Template (1‑click deploy)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/J_hQXk?referralCode=P0DTs8&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 ## Setup
 
