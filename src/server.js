@@ -95,12 +95,42 @@ function configPath() {
   );
 }
 
+function getControlUiAllowedOrigins() {
+  const origins = [];
+  const railwayUrl = process.env.RAILWAY_PUBLIC_URL?.trim();
+  if (railwayUrl) {
+    origins.push(railwayUrl.replace(/\/$/, ""));
+  }
+  if (origins.length === 0) {
+    origins.push(`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`);
+  }
+  return origins;
+}
+
 function isConfigured() {
   try {
     return fs.existsSync(configPath());
   } catch {
     return false;
   }
+}
+
+async function ensureControlUiAllowedOrigins() {
+  if (!isConfigured()) return;
+  const origins = getControlUiAllowedOrigins();
+  const result = await runCmd(
+    OPENCLAW_NODE,
+    clawArgs([
+      "config",
+      "set",
+      "--json",
+      "gateway.controlUi.allowedOrigins",
+      JSON.stringify(origins),
+    ]),
+  );
+  console.log(
+    `[config] gateway.controlUi.allowedOrigins=${JSON.stringify(origins)} exit=${result.code}`,
+  );
 }
 
 let gatewayProc = null;
@@ -144,6 +174,8 @@ async function waitForGatewayReady(opts = {}) {
 async function startGateway() {
   if (gatewayProc) return;
   if (!isConfigured()) throw new Error("Gateway cannot start: not configured");
+
+  await ensureControlUiAllowedOrigins();
 
   fs.mkdirSync(STATE_DIR, { recursive: true });
   fs.mkdirSync(WORKSPACE_DIR, { recursive: true });
@@ -636,6 +668,19 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
         ]),
       );
       extra += `[config] gateway.trustedProxies exit=${proxiesResult.code}\n`;
+
+      const origins = getControlUiAllowedOrigins();
+      const originsResult = await runCmd(
+        OPENCLAW_NODE,
+        clawArgs([
+          "config",
+          "set",
+          "--json",
+          "gateway.controlUi.allowedOrigins",
+          JSON.stringify(origins),
+        ]),
+      );
+      extra += `[config] gateway.controlUi.allowedOrigins=${JSON.stringify(origins)} exit=${originsResult.code}\n`;
 
       if (payload.model?.trim()) {
         extra += `[setup] Setting model to ${payload.model.trim()}...\n`;
