@@ -9,7 +9,6 @@ PRIVATE_DIR=/data/private
 mkdir -p $PRIVATE_DIR
 chown root:root $PRIVATE_DIR
 chmod 700 $PRIVATE_DIR
-chmod 700 $OPENCLAW_STATE_DIR
 
 /root/github-app-auth/install.sh
 
