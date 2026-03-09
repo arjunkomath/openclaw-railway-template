@@ -4,16 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>🦞 OpenClaw — Personal AI Assistant</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet" href="/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style type="text/tailwindcss">
-    @theme {
-      --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
-    }
-    [x-cloak] { display: none !important; }
-  </style>
   <script>
   document.addEventListener('alpine:init', () => {
     Alpine.data('setupApp', () => ({
@@ -337,132 +331,146 @@
           this.log += '✗ Error: ' + String(e) + '\n';
           this.devicesLoading = false;
         }
-      }
+      },
+
     }));
   });
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
-<body class="bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 min-h-screen font-sans" x-data="setupApp()">
-  <div class="max-w-3xl mx-auto px-4 py-12 min-w-[400px]">
-    <div class="flex justify-center mb-6">
+<body x-data="setupApp()">
+  <div class="container">
+    <div class="logo-wrap">
       <picture>
         <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text-dark.png">
-        <img src="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text.png" alt="OpenClaw" class="max-w-[280px] h-auto">
+        <img src="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text.png" alt="OpenClaw" class="logo-img">
       </picture>
     </div>
-    <h1 class="text-2xl font-semibold text-center tracking-tight mb-2">Personal AI Assistant</h1>
-    <p class="text-neutral-500 text-center text-sm mb-8">Configure your AI assistant in a few simple steps</p>
+    <h1 class="page-title">Personal AI Assistant</h1>
+    <p class="page-subtitle">Configure your AI assistant in a few simple steps</p>
 
-    <div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-5 mb-6 shadow-sm dark:shadow-none">
-      <div class="flex items-center justify-between">
+    <div class="card card-compact mb-6">
+      <div class="card-header">
         <div>
-          <span class="text-xs uppercase tracking-wide text-neutral-500 font-medium">🦞 OpenClaw</span>
-          <span x-show="openclawVersion" x-text="openclawVersion" class="text-xs text-neutral-400 dark:text-neutral-600 ml-2"></span>
+          <span class="status-label">🦞 OpenClaw</span>
+          <span x-show="openclawVersion" x-text="openclawVersion" class="status-version"></span>
         </div>
-        <span x-text="status" class="text-sm" :class="configured ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'"></span>
+        <span x-text="status" class="text-sm" :class="configured ? 'status-configured' : 'status-unconfigured'"></span>
       </div>
-      <div x-show="configured" class="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-800 flex flex-wrap gap-4">
-        <a href="/openclaw" target="_blank" class="inline-flex items-center gap-2 text-sm text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 transition-colors">
+      <div x-show="configured" class="card-links">
+        <a href="/openclaw" target="_blank" class="inline-link link-teal">
           Open OpenClaw UI
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          <svg class="icon-link" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
         </a>
-        <a x-show="tuiEnabled" href="/tui" target="_blank" class="inline-flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400 hover:text-purple-500 dark:hover:text-purple-300 transition-colors">
+        <a x-show="tuiEnabled" href="/tui" target="_blank" class="inline-link link-purple">
           Open Terminal
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          <svg class="icon-link" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
         </a>
       </div>
     </div>
 
-    <div x-show="isReady && configured" x-cloak class="space-y-6">
-      <div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-sm dark:shadow-none">
-        <h2 class="text-lg font-semibold mb-1">Setup Complete</h2>
-        <p class="text-neutral-500 text-sm">Your OpenClaw instance is configured and running</p>
+    <div x-show="isReady && configured" x-cloak class="card-group">
+      <div class="card">
+        <h2 class="card-title">Setup Complete</h2>
+        <p class="text-muted text-sm">Your OpenClaw instance is configured and running</p>
       </div>
 
-      <div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-sm dark:shadow-none">
-        <h3 class="text-base font-semibold mb-1">Devices</h3>
-        <p class="text-neutral-500 text-sm mb-4">Manage devices and channel access</p>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="flex flex-col bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+      <div class="card">
+        <h3 class="card-title" style="font-size:1rem">Devices</h3>
+        <p class="card-subtitle">Manage devices and channel access</p>
+        <div class="action-grid">
+          <div class="action-card action-blue">
+            <div class="action-card-header">
+              <div class="action-icon">
+                <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
               </div>
-              <span class="font-medium text-blue-700 dark:text-blue-300">Approve Channel Access</span>
+              <span class="action-title">Approve Channel Access</span>
             </div>
-            <p class="text-sm text-blue-600/80 dark:text-blue-400/70 flex-1">Grant DM access to users who have requested access on Telegram or Discord.</p>
-            <button @click="openPairingModal()" :disabled="loading" class="w-full mt-4 bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-900/60 disabled:opacity-50 disabled:cursor-not-allowed text-blue-700 dark:text-blue-300 px-4 py-2.5 rounded-lg font-medium border border-blue-300 dark:border-blue-700 transition-colors">
+            <p class="action-desc">Grant DM access to users who have requested access on Telegram or Discord.</p>
+            <button @click="openPairingModal()" :disabled="loading" class="action-btn">
               Approve Channel Access
             </button>
           </div>
 
-          <div class="flex flex-col bg-violet-50 dark:bg-violet-900/20 rounded-xl p-4 border border-violet-200 dark:border-violet-800">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 bg-violet-500/20 rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          <div class="action-card action-violet">
+            <div class="action-card-header">
+              <div class="action-icon">
+                <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
               </div>
-              <span class="font-medium text-violet-700 dark:text-violet-300">Manage Devices</span>
+              <span class="action-title">Manage Devices</span>
             </div>
-            <p class="text-sm text-violet-600/80 dark:text-violet-400/70 flex-1">Approve or reject browser/device pairing requests for the Control UI.</p>
-            <button @click="openDevicesModal()" :disabled="loading" class="w-full mt-4 bg-violet-100 dark:bg-violet-900/40 hover:bg-violet-200 dark:hover:bg-violet-900/60 disabled:opacity-50 disabled:cursor-not-allowed text-violet-700 dark:text-violet-300 px-4 py-2.5 rounded-lg font-medium border border-violet-300 dark:border-violet-700 transition-colors">
+            <p class="action-desc">Approve or reject browser/device pairing requests for the Control UI.</p>
+            <button @click="openDevicesModal()" :disabled="loading" class="action-btn">
               Manage Devices
             </button>
           </div>
         </div>
       </div>
 
-      <div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-sm dark:shadow-none">
-        <h3 class="text-base font-semibold mb-1">Maintenance</h3>
-        <p class="text-neutral-500 text-sm mb-4">Health checks and data export</p>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div class="flex flex-col bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <div class="card">
+        <h3 class="card-title" style="font-size:1rem">Maintenance</h3>
+        <p class="card-subtitle">Health checks and data export</p>
+        <div class="action-grid mb-4">
+          <div class="action-card action-amber">
+            <div class="action-card-header">
+              <div class="action-icon">
+                <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
               </div>
-              <span class="font-medium text-amber-700 dark:text-amber-300">Run Doctor</span>
+              <span class="action-title">Run Doctor</span>
             </div>
-            <p class="text-sm text-amber-600/80 dark:text-amber-400/70 flex-1">Performs health checks and repairs broken configuration.</p>
-            <button @click="runDoctor()" :disabled="loading" class="w-full mt-4 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/60 disabled:opacity-50 disabled:cursor-not-allowed text-amber-700 dark:text-amber-300 px-4 py-2.5 rounded-lg font-medium border border-amber-300 dark:border-amber-700 transition-colors">
+            <p class="action-desc">Performs health checks and repairs broken configuration.</p>
+            <button @click="runDoctor()" :disabled="loading" class="action-btn">
               <span x-show="!loading">Run Doctor</span>
-              <span x-show="loading" class="flex items-center justify-center gap-2">
-                <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              <span x-show="loading" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem">
+                <svg class="spinner-inline" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                 Running...
               </span>
             </button>
           </div>
 
-          <div class="flex flex-col bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          <div class="action-card action-emerald">
+            <div class="action-card-header">
+              <div class="action-icon">
+                <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
               </div>
-              <span class="font-medium text-emerald-700 dark:text-emerald-300">Export Data</span>
+              <span class="action-title">Export Data</span>
             </div>
-            <p class="text-sm text-emerald-600/80 dark:text-emerald-400/70 flex-1">Download a password-protected ZIP of your config and workspace data.</p>
-            <button @click="exportData()" :disabled="loading || exporting" class="w-full mt-4 bg-emerald-100 dark:bg-emerald-900/40 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 disabled:opacity-50 disabled:cursor-not-allowed text-emerald-700 dark:text-emerald-300 px-4 py-2.5 rounded-lg font-medium border border-emerald-300 dark:border-emerald-700 transition-colors">
+            <p class="action-desc">Download a password-protected ZIP of your config and workspace data.</p>
+            <button @click="exportData()" :disabled="loading || exporting" class="action-btn">
               <span x-show="!exporting">Export Data</span>
-              <span x-show="exporting" class="flex items-center justify-center gap-2">
-                <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              <span x-show="exporting" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem">
+                <svg class="spinner-inline" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                 Exporting...
               </span>
             </button>
           </div>
+
+          <div class="action-card action-blue">
+            <div class="action-card-header">
+              <div class="action-icon">
+                <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              </div>
+              <span class="action-title">View Logs</span>
+            </div>
+            <p class="action-desc">Stream server logs in real-time for debugging and monitoring.</p>
+            <a href="/logs" target="_blank" class="action-btn" style="display:block;text-align:center;text-decoration:none">
+              View Logs
+            </a>
+          </div>
         </div>
 
-        <div x-show="log" class="bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4 font-mono text-xs text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap max-h-64 overflow-y-auto" x-text="log"></div>
+        <div x-show="log" class="log-output" x-text="log"></div>
       </div>
 
-      <div class="bg-white dark:bg-neutral-900 border border-red-200 dark:border-red-900/50 rounded-xl p-6 shadow-sm dark:shadow-none">
-        <h3 class="text-base font-semibold text-red-700 dark:text-red-400 mb-1">Danger Zone</h3>
-        <p class="text-neutral-500 text-sm mb-4">Destructive actions that cannot be undone</p>
-        <div class="flex items-center justify-between bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-200 dark:border-red-800">
+      <div class="danger-card">
+        <h3 class="danger-title">Danger Zone</h3>
+        <p class="text-muted text-sm mb-4">Destructive actions that cannot be undone</p>
+        <div class="danger-row">
           <div>
-            <p class="font-medium text-red-700 dark:text-red-300">Reset Setup</p>
-            <p class="text-sm text-red-600/80 dark:text-red-400/70 mt-1">Deletes the config file so you can run onboarding again from scratch.</p>
+            <p class="danger-row-title">Reset Setup</p>
+            <p class="danger-row-desc">Deletes the config file so you can run onboarding again from scratch.</p>
           </div>
-          <button @click="resetSetup()" :disabled="loading" class="shrink-0 ml-4 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
+          <button @click="resetSetup()" :disabled="loading" class="danger-btn shrink-0">
             Reset Setup
           </button>
         </div>
@@ -470,285 +478,279 @@
     </div>
 
     <div x-show="isReady && !configured" x-cloak>
-      <div class="flex items-center justify-center gap-2 mb-8">
+      <div class="steps">
         <template x-for="s in totalSteps" :key="s">
-          <div class="flex items-center">
+          <div class="step-item">
             <div
-              class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all cursor-pointer"
-              :class="step === s ? 'bg-red-600 text-white' : (step > s ? 'bg-emerald-600 text-white' : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-500')"
+              class="step-dot"
+              :class="step === s ? 'step-active' : (step > s ? 'step-done' : 'step-pending')"
               @click="step = s"
               x-text="s"
             ></div>
-            <div x-show="s < totalSteps" class="w-12 h-0.5 mx-1" :class="step > s ? 'bg-emerald-600' : 'bg-neutral-200 dark:bg-neutral-800'"></div>
+            <div x-show="s < totalSteps" class="step-line" :class="step > s ? 'step-line-done' : 'step-line-pending'"></div>
           </div>
         </template>
       </div>
 
-      <div x-show="step === 1" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-x-4" x-transition:enter-end="opacity-100 translate-x-0">
-        <div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-sm dark:shadow-none">
-          <h2 class="text-lg font-semibold mb-1">Model & Authentication</h2>
-          <p class="text-neutral-500 text-sm mb-6">Choose your AI provider and authentication method</p>
+      <div x-show="step === 1" x-transition:enter="fade-slide-enter" x-transition:enter-start="fade-slide-start" x-transition:enter-end="fade-slide-end">
+        <div class="card">
+          <h2 class="card-title">Model & Authentication</h2>
+          <p class="card-subtitle">Choose your AI provider and authentication method</p>
 
-          <div class="space-y-5">
-            <div>
-              <label class="block text-xs uppercase tracking-wide text-neutral-500 font-medium mb-2">Provider Group</label>
-              <select x-model="selectedGroup" @change="updateAuthChoices()" class="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-red-500 transition-colors">
-                <template x-for="g in authGroups" :key="g.value">
-                  <option :value="g.value" x-text="g.label + (g.hint ? ' — ' + g.hint : '')"></option>
-                </template>
-              </select>
-            </div>
+          <div class="form-group">
+            <label class="label">Provider Group</label>
+            <select x-model="selectedGroup" @change="updateAuthChoices()" class="select">
+              <template x-for="g in authGroups" :key="g.value">
+                <option :value="g.value" x-text="g.label + (g.hint ? ' — ' + g.hint : '')"></option>
+              </template>
+            </select>
+          </div>
 
-            <div>
-              <label class="block text-xs uppercase tracking-wide text-neutral-500 font-medium mb-2">Auth Method</label>
-              <select x-model="selectedAuth" class="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-red-500 transition-colors">
-                <template x-for="o in authChoices" :key="o.value">
-                  <option :value="o.value" x-text="o.label + (o.hint ? ' — ' + o.hint : '')"></option>
-                </template>
-              </select>
-            </div>
+          <div class="form-group">
+            <label class="label">Auth Method</label>
+            <select x-model="selectedAuth" class="select">
+              <template x-for="o in authChoices" :key="o.value">
+                <option :value="o.value" x-text="o.label + (o.hint ? ' — ' + o.hint : '')"></option>
+              </template>
+            </select>
+          </div>
 
-            <div>
-              <label class="block text-xs uppercase tracking-wide text-neutral-500 font-medium mb-2">API Key / Token</label>
-              <input x-model="authSecret" type="password" placeholder="Paste your API key or token" class="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 text-sm placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-red-500 transition-colors" />
-            </div>
+          <div class="form-group">
+            <label class="label">API Key / Token</label>
+            <input x-model="authSecret" type="password" placeholder="Paste your API key or token" class="input" />
+          </div>
 
-            <div>
-              <label class="block text-xs uppercase tracking-wide text-neutral-500 font-medium mb-2">Model</label>
-              <input x-model="model" type="text" placeholder="e.g. openai/gpt-4.1, anthropic/claude-sonnet-4" class="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 text-sm placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-red-500 transition-colors" />
-              <p class="text-xs text-neutral-500 dark:text-neutral-600 mt-2">Format: provider/model-name</p>
-            </div>
-
+          <div class="form-group">
+            <label class="label">Model</label>
+            <input x-model="model" type="text" placeholder="e.g. openai/gpt-4.1, anthropic/claude-sonnet-4" class="input" />
+            <p class="form-hint">Format: provider/model-name</p>
           </div>
         </div>
       </div>
 
-      <div x-show="step === 2" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-x-4" x-transition:enter-end="opacity-100 translate-x-0">
-        <div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-sm dark:shadow-none">
-          <h2 class="text-lg font-semibold mb-1">Channels</h2>
-          <p class="text-neutral-500 text-sm mb-6">Connect messaging platforms (optional — can be added later)</p>
+      <div x-show="step === 2" x-transition:enter="fade-slide-enter" x-transition:enter-start="fade-slide-start" x-transition:enter-end="fade-slide-end">
+        <div class="card">
+          <h2 class="card-title">Channels</h2>
+          <p class="card-subtitle">Connect messaging platforms (optional — can be added later)</p>
 
-          <div class="space-y-5">
-            <div class="bg-sky-50 dark:bg-neutral-800/50 rounded-lg p-4 border border-sky-200 dark:border-neutral-800">
-              <div class="flex items-center gap-3 mb-3">
-                <div class="w-8 h-8 bg-sky-500/20 rounded-lg flex items-center justify-center">
-                  <svg class="w-5 h-5 text-sky-500 dark:text-sky-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+          <div class="form-group">
+            <div class="channel-card channel-telegram">
+              <div class="channel-header">
+                <div class="channel-icon">
+                  <svg class="icon-md" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
                 </div>
-                <span class="font-medium">Telegram</span>
+                <span class="channel-name">Telegram</span>
               </div>
-              <input x-model="telegramToken" type="password" placeholder="Bot token from @BotFather" class="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 text-sm placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-sky-500 transition-colors" />
-              <p class="text-xs text-neutral-500 dark:text-neutral-600 mt-2">Message <code class="bg-neutral-200 dark:bg-neutral-800 px-1.5 py-0.5 rounded text-sky-600 dark:text-sky-400">@BotFather</code> on Telegram and run <code class="bg-neutral-200 dark:bg-neutral-800 px-1.5 py-0.5 rounded text-sky-600 dark:text-sky-400">/newbot</code></p>
+              <input x-model="telegramToken" type="password" placeholder="Bot token from @BotFather" class="input" />
+              <p class="form-hint">Message <code class="code-inline">@BotFather</code> on Telegram and run <code class="code-inline">/newbot</code></p>
             </div>
+          </div>
 
-            <div class="bg-indigo-50 dark:bg-neutral-800/50 rounded-lg p-4 border border-indigo-200 dark:border-neutral-800">
-              <div class="flex items-center gap-3 mb-3">
-                <div class="w-8 h-8 bg-indigo-500/20 rounded-lg flex items-center justify-center">
-                  <svg class="w-5 h-5 text-indigo-500 dark:text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+          <div class="form-group">
+            <div class="channel-card channel-discord">
+              <div class="channel-header">
+                <div class="channel-icon">
+                  <svg class="icon-md" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
                 </div>
-                <span class="font-medium">Discord</span>
+                <span class="channel-name">Discord</span>
               </div>
-              <input x-model="discordToken" type="password" placeholder="Bot token from Developer Portal" class="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 text-sm placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-              <p class="text-xs text-neutral-500 dark:text-neutral-600 mt-2">Enable <strong class="text-amber-600 dark:text-amber-400">MESSAGE CONTENT INTENT</strong> in Bot → Privileged Gateway Intents</p>
+              <input x-model="discordToken" type="password" placeholder="Bot token from Developer Portal" class="input" />
+              <p class="form-hint">Enable <strong class="text-amber-strong">MESSAGE CONTENT INTENT</strong> in Bot → Privileged Gateway Intents</p>
             </div>
+          </div>
 
-            <div class="bg-green-50 dark:bg-neutral-800/50 rounded-lg p-4 border border-green-200 dark:border-neutral-800">
-              <div class="flex items-center gap-3 mb-3">
-                <div class="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
-                  <svg class="w-5 h-5 text-green-600 dark:text-green-400" viewBox="0 0 24 24" fill="currentColor"><path d="M5.042 15.165a2.528 2.528 0 01-2.52 2.523A2.528 2.528 0 010 15.165a2.527 2.527 0 012.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 012.521-2.52 2.527 2.527 0 012.521 2.52v6.313A2.528 2.528 0 018.834 24a2.528 2.528 0 01-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 01-2.521-2.52A2.528 2.528 0 018.834 0a2.528 2.528 0 012.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 012.521 2.521 2.528 2.528 0 01-2.521 2.521H2.522A2.528 2.528 0 010 8.834a2.528 2.528 0 012.522-2.521h6.312zm10.124 2.521a2.528 2.528 0 012.522-2.521A2.528 2.528 0 0124 8.834a2.528 2.528 0 01-2.52 2.521h-2.522V8.834zm-1.271 0a2.528 2.528 0 01-2.521 2.521 2.528 2.528 0 01-2.521-2.521V2.522A2.528 2.528 0 0115.166 0a2.528 2.528 0 012.521 2.522v6.312zm-2.521 10.124a2.528 2.528 0 012.521 2.522A2.528 2.528 0 0115.166 24a2.528 2.528 0 01-2.521-2.522v-2.522h2.521zm0-1.271a2.528 2.528 0 01-2.521-2.521 2.528 2.528 0 012.521-2.521h6.312A2.528 2.528 0 0124 15.165a2.528 2.528 0 01-2.52 2.521h-6.313z"/></svg>
+          <div class="form-group">
+            <div class="channel-card channel-slack">
+              <div class="channel-header">
+                <div class="channel-icon">
+                  <svg class="icon-md" viewBox="0 0 24 24" fill="currentColor"><path d="M5.042 15.165a2.528 2.528 0 01-2.52 2.523A2.528 2.528 0 010 15.165a2.527 2.527 0 012.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 012.521-2.52 2.527 2.527 0 012.521 2.52v6.313A2.528 2.528 0 018.834 24a2.528 2.528 0 01-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 01-2.521-2.52A2.528 2.528 0 018.834 0a2.528 2.528 0 012.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 012.521 2.521 2.528 2.528 0 01-2.521 2.521H2.522A2.528 2.528 0 010 8.834a2.528 2.528 0 012.522-2.521h6.312zm10.124 2.521a2.528 2.528 0 012.522-2.521A2.528 2.528 0 0124 8.834a2.528 2.528 0 01-2.52 2.521h-2.522V8.834zm-1.271 0a2.528 2.528 0 01-2.521 2.521 2.528 2.528 0 01-2.521-2.521V2.522A2.528 2.528 0 0115.166 0a2.528 2.528 0 012.521 2.522v6.312zm-2.521 10.124a2.528 2.528 0 012.521 2.522A2.528 2.528 0 0115.166 24a2.528 2.528 0 01-2.521-2.522v-2.522h2.521zm0-1.271a2.528 2.528 0 01-2.521-2.521 2.528 2.528 0 012.521-2.521h6.312A2.528 2.528 0 0124 15.165a2.528 2.528 0 01-2.52 2.521h-6.313z"/></svg>
                 </div>
-                <span class="font-medium">Slack</span>
+                <span class="channel-name">Slack</span>
               </div>
-              <div class="space-y-3">
-                <input x-model="slackBotToken" type="password" placeholder="Bot token (xoxb-...)" class="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 text-sm placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-green-500 transition-colors" />
-                <input x-model="slackAppToken" type="password" placeholder="App token (xapp-...)" class="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 text-sm placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-green-500 transition-colors" />
-              </div>
+              <input x-model="slackBotToken" type="password" placeholder="Bot token (xoxb-...)" class="input" />
+              <input x-model="slackAppToken" type="password" placeholder="App token (xapp-...)" class="input" style="margin-top:0.75rem" />
             </div>
           </div>
         </div>
       </div>
 
-      <div x-show="step === 3" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-x-4" x-transition:enter-end="opacity-100 translate-x-0">
-        <div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-sm dark:shadow-none">
-          <h2 class="text-lg font-semibold mb-1">Run Setup</h2>
-          <p class="text-neutral-500 text-sm mb-6">Review your configuration and start OpenClaw</p>
+      <div x-show="step === 3" x-transition:enter="fade-slide-enter" x-transition:enter-start="fade-slide-start" x-transition:enter-end="fade-slide-end">
+        <div class="card">
+          <h2 class="card-title">Run Setup</h2>
+          <p class="card-subtitle">Review your configuration and start OpenClaw</p>
 
-          <div class="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-4 border border-neutral-200 dark:border-neutral-800 mb-6">
-            <h3 class="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-3">Configuration Summary</h3>
-            <dl class="space-y-2 text-sm">
-              <div class="flex justify-between">
-                <dt class="text-neutral-500">Provider</dt>
-                <dd x-text="selectedGroup || '—'" class="text-neutral-700 dark:text-neutral-300"></dd>
+          <div class="config-summary">
+            <h3 class="config-summary-title">Configuration Summary</h3>
+            <dl>
+              <div class="config-row">
+                <dt>Provider</dt>
+                <dd x-text="selectedGroup || '—'"></dd>
               </div>
-              <div class="flex justify-between">
-                <dt class="text-neutral-500">Auth</dt>
-                <dd x-text="selectedAuth || '—'" class="text-neutral-700 dark:text-neutral-300"></dd>
+              <div class="config-row">
+                <dt>Auth</dt>
+                <dd x-text="selectedAuth || '—'"></dd>
               </div>
-              <div class="flex justify-between">
-                <dt class="text-neutral-500">Model</dt>
-                <dd x-text="model || 'Default'" class="text-neutral-700 dark:text-neutral-300"></dd>
+              <div class="config-row">
+                <dt>Model</dt>
+                <dd x-text="model || 'Default'"></dd>
               </div>
-              <div class="flex justify-between">
-                <dt class="text-neutral-500">Channels</dt>
-                <dd class="text-neutral-700 dark:text-neutral-300">
-                  <span x-show="telegramToken" class="inline-flex items-center gap-1 bg-sky-100 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 px-2 py-0.5 rounded text-xs mr-1">Telegram</span>
-                  <span x-show="discordToken" class="inline-flex items-center gap-1 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded text-xs mr-1">Discord</span>
-                  <span x-show="slackBotToken && slackAppToken" class="inline-flex items-center gap-1 bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 px-2 py-0.5 rounded text-xs">Slack</span>
-                  <span x-show="!telegramToken && !discordToken && !(slackBotToken && slackAppToken)" class="text-neutral-500">None</span>
+              <div class="config-row">
+                <dt>Channels</dt>
+                <dd>
+                  <span x-show="telegramToken" class="badge badge-sky">Telegram</span>
+                  <span x-show="discordToken" class="badge badge-indigo">Discord</span>
+                  <span x-show="slackBotToken && slackAppToken" class="badge badge-green">Slack</span>
+                  <span x-show="!telegramToken && !discordToken && !(slackBotToken && slackAppToken)" class="text-muted">None</span>
                 </dd>
               </div>
             </dl>
           </div>
 
-          <div class="flex flex-wrap gap-3 mb-4">
-            <button @click="runSetup()" :disabled="loading" class="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors">
+          <div class="btn-row">
+            <button @click="runSetup()" :disabled="loading" class="btn btn-primary">
               <span x-show="!loading">Run Setup</span>
-              <span x-show="loading" class="flex items-center gap-2">
-                <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              <span x-show="loading" style="display:inline-flex;align-items:center;gap:0.5rem">
+                <svg class="spinner-inline" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                 Running...
               </span>
             </button>
-<button @click="resetSetup()" :disabled="loading" class="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-3 rounded-lg font-medium transition-colors">
+            <button @click="resetSetup()" :disabled="loading" class="btn btn-ghost">
               Reset
             </button>
           </div>
 
-          <div x-show="log" class="bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4 font-mono text-xs text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap max-h-64 overflow-y-auto" x-text="log"></div>
+          <div x-show="log" class="log-output" x-text="log"></div>
 
-          <p class="text-xs text-neutral-500 dark:text-neutral-600 mt-4">Reset deletes the config file so you can rerun onboarding. Channel access approval grants DM access when dmPolicy=pairing.</p>
+          <p class="text-xs text-muted mt-4">Reset deletes the config file so you can rerun onboarding. Channel access approval grants DM access when dmPolicy=pairing.</p>
         </div>
       </div>
 
-      <div class="flex justify-between mt-6">
+      <div class="nav-row">
         <button
           x-show="step > 1"
           @click="prevStep()"
-          class="flex items-center gap-2 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors"
+          class="nav-back"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
           Back
         </button>
         <div x-show="step === 1"></div>
         <button
           x-show="step < totalSteps"
           @click="nextStep()"
-          class="flex items-center gap-2 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 px-5 py-2.5 rounded-lg font-medium transition-colors ml-auto"
+          class="nav-next"
         >
           Next
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         </button>
       </div>
     </div>
 
-    <div x-show="showDevicesModal" x-cloak class="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50" @click.self="showDevicesModal = false">
-      <div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 w-full max-w-lg mx-4 shadow-xl dark:shadow-none max-h-[80vh] overflow-y-auto">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold">Manage Devices</h3>
-          <div class="flex items-center gap-2">
-            <button @click="loadDevices()" :disabled="devicesLoading" class="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
-              <svg class="w-4 h-4" :class="devicesLoading && 'animate-spin'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+    <div x-show="showDevicesModal" x-cloak class="modal-overlay" @click.self="showDevicesModal = false">
+      <div class="modal-card modal-lg">
+        <div class="modal-header">
+          <h3 class="modal-title">Manage Devices</h3>
+          <div class="modal-actions">
+            <button @click="loadDevices()" :disabled="devicesLoading" class="btn-icon">
+              <svg class="icon-sm" :class="devicesLoading && 'spinning'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             </button>
-            <button @click="showDevicesModal = false" class="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            <button @click="showDevicesModal = false" class="btn-icon">
+              <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
         </div>
 
-        <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-4">When a new browser connects to the Control UI, it requires a one-time pairing approval.</p>
+        <p class="modal-desc">When a new browser connects to the Control UI, it requires a one-time pairing approval.</p>
 
-        <button @click="approveDevice()" :disabled="devicesLoading" class="w-full mb-4 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg font-medium transition-colors">
+        <button @click="approveDevice()" :disabled="devicesLoading" class="btn-violet mb-4">
           <span x-show="!devicesLoading">Approve Latest Request</span>
-          <span x-show="devicesLoading" class="flex items-center justify-center gap-2">
-            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          <span x-show="devicesLoading" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem">
+            <svg class="spinner-inline" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
             Loading...
           </span>
         </button>
 
-        <div class="space-y-4">
-          <div>
-            <h4 class="text-xs uppercase tracking-wide text-neutral-500 font-medium mb-2">Pending Requests</h4>
-            <div x-show="devicesPending.length === 0 && !devicesLoading" class="text-sm text-neutral-400 dark:text-neutral-600 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-3 border border-neutral-200 dark:border-neutral-800">No pending requests</div>
-            <div class="space-y-2">
-              <template x-for="req in devicesPending" :key="req.requestId || req.id">
-                <div class="flex items-center justify-between bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg p-3">
-                  <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-violet-700 dark:text-violet-300 truncate" x-text="req.requestId || req.id"></p>
-                    <p x-show="req.createdAt" class="text-xs text-violet-500 dark:text-violet-400" x-text="req.createdAt ? new Date(req.createdAt).toLocaleString() : ''"></p>
-                  </div>
-                  <div class="flex gap-2 ml-3 shrink-0">
-                    <button @click="approveDevice(req.requestId || req.id)" :disabled="devicesLoading" class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">Approve</button>
-                    <button @click="rejectDevice(req.requestId || req.id)" :disabled="devicesLoading" class="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">Reject</button>
-                  </div>
+        <div class="section-block">
+          <h4 class="section-heading">Pending Requests</h4>
+          <div x-show="devicesPending.length === 0 && !devicesLoading" class="empty-state">No pending requests</div>
+          <div class="device-list">
+            <template x-for="req in devicesPending" :key="req.requestId || req.id">
+              <div class="device-pending">
+                <div class="min-w-0 flex-1">
+                  <p class="device-pending-id truncate" x-text="req.requestId || req.id"></p>
+                  <p x-show="req.createdAt" class="device-pending-date" x-text="req.createdAt ? new Date(req.createdAt).toLocaleString() : ''"></p>
                 </div>
-              </template>
-            </div>
-          </div>
-
-          <div>
-            <h4 class="text-xs uppercase tracking-wide text-neutral-500 font-medium mb-2">Paired Devices</h4>
-            <div x-show="devicesPaired.length === 0 && !devicesLoading" class="text-sm text-neutral-400 dark:text-neutral-600 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-3 border border-neutral-200 dark:border-neutral-800">No paired devices</div>
-            <div class="space-y-2">
-              <template x-for="dev in devicesPaired" :key="dev.deviceId || dev.id">
-                <div class="flex items-center justify-between bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-800 rounded-lg p-3">
-                  <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate" x-text="dev.deviceId || dev.id"></p>
-                    <p class="text-xs text-neutral-500 dark:text-neutral-400">
-                      <span x-show="dev.role" x-text="dev.role" class="bg-neutral-200 dark:bg-neutral-700 px-1.5 py-0.5 rounded mr-1"></span>
-                      <span x-show="dev.createdAt" x-text="dev.createdAt ? new Date(dev.createdAt).toLocaleString() : ''"></span>
-                    </p>
-                  </div>
+                <div class="device-actions">
+                  <button @click="approveDevice(req.requestId || req.id)" :disabled="devicesLoading" class="btn-emerald">Approve</button>
+                  <button @click="rejectDevice(req.requestId || req.id)" :disabled="devicesLoading" class="btn-red-sm">Reject</button>
                 </div>
-              </template>
-            </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <div class="section-block">
+          <h4 class="section-heading">Paired Devices</h4>
+          <div x-show="devicesPaired.length === 0 && !devicesLoading" class="empty-state">No paired devices</div>
+          <div class="device-list">
+            <template x-for="dev in devicesPaired" :key="dev.deviceId || dev.id">
+              <div class="device-paired">
+                <div class="min-w-0 flex-1">
+                  <p class="device-paired-id truncate" x-text="dev.deviceId || dev.id"></p>
+                  <p class="device-paired-meta">
+                    <span x-show="dev.role" x-text="dev.role" class="device-role"></span>
+                    <span x-show="dev.createdAt" x-text="dev.createdAt ? new Date(dev.createdAt).toLocaleString() : ''"></span>
+                  </p>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
       </div>
     </div>
 
-    <div x-show="showExportInfo" x-cloak class="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50" @click.self="showExportInfo = false">
-      <div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 w-full max-w-md mx-4 shadow-xl dark:shadow-none">
-        <h3 class="text-lg font-semibold mb-4">Unzip Instructions</h3>
-        <p class="text-sm text-neutral-600 dark:text-neutral-400 mb-4">The exported ZIP is password-protected with your <strong>SETUP_PASSWORD</strong>.</p>
-        <div class="space-y-4">
-          <div>
-            <p class="text-xs uppercase tracking-wide text-neutral-500 font-medium mb-2">macOS / Linux</p>
-            <code class="block bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300 font-mono">unzip -P YOUR_PASSWORD openclaw-export-*.zip</code>
-          </div>
-          <div>
-            <p class="text-xs uppercase tracking-wide text-neutral-500 font-medium mb-2">Windows (PowerShell)</p>
-            <p class="text-sm text-neutral-600 dark:text-neutral-400">Use <a href="https://www.7-zip.org/" target="_blank" class="text-teal-600 dark:text-teal-400 underline">7-Zip</a> to extract — right-click the file, select "Extract Here", and enter your password when prompted.</p>
-          </div>
-          <div>
-            <p class="text-xs uppercase tracking-wide text-neutral-500 font-medium mb-2">Using 7z CLI</p>
-            <code class="block bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300 font-mono">7z x -pYOUR_PASSWORD openclaw-export-*.zip</code>
-          </div>
+    <div x-show="showExportInfo" x-cloak class="modal-overlay" @click.self="showExportInfo = false">
+      <div class="modal-card modal-md">
+        <h3 class="modal-title mb-4">Unzip Instructions</h3>
+        <p class="text-sm text-muted mb-4">The exported ZIP is password-protected with your <strong>SETUP_PASSWORD</strong>.</p>
+        <div class="section-block">
+          <p class="label">macOS / Linux</p>
+          <code class="code-block">unzip -P YOUR_PASSWORD openclaw-export-*.zip</code>
         </div>
-        <button @click="showExportInfo = false" class="w-full mt-6 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 px-4 py-3 rounded-lg font-medium border border-neutral-300 dark:border-neutral-700 transition-colors">Close</button>
+        <div class="section-block">
+          <p class="label">Windows (PowerShell)</p>
+          <p class="text-sm text-muted">Use <a href="https://www.7-zip.org/" target="_blank" class="link-teal" style="text-decoration:underline">7-Zip</a> to extract — right-click the file, select "Extract Here", and enter your password when prompted.</p>
+        </div>
+        <div class="section-block">
+          <p class="label">Using 7z CLI</p>
+          <code class="code-block">7z x -pYOUR_PASSWORD openclaw-export-*.zip</code>
+        </div>
+        <button @click="showExportInfo = false" class="btn-close-full">Close</button>
       </div>
     </div>
 
-    <div x-show="showPairingModal" x-cloak class="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50" @click.self="showPairingModal = false">
-      <div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 w-full max-w-sm mx-4 shadow-xl dark:shadow-none">
-        <h3 class="text-lg font-semibold mb-4">Approve Channel Access</h3>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-xs uppercase tracking-wide text-neutral-500 font-medium mb-2">Channel</label>
-            <select x-model="pairingChannel" class="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-red-500 transition-colors">
-              <option value="">Select channel...</option>
-              <option value="telegram">Telegram</option>
-              <option value="discord">Discord</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs uppercase tracking-wide text-neutral-500 font-medium mb-2">Pairing Code</label>
-            <input x-model="pairingCode" type="text" placeholder="e.g. 3EY4PUYS" class="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 text-sm placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-red-500 transition-colors" />
-          </div>
-          <div class="flex gap-3 pt-2">
-            <button @click="approvePairing()" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium transition-colors">Approve</button>
-            <button @click="showPairingModal = false" class="flex-1 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 px-4 py-3 rounded-lg font-medium border border-neutral-300 dark:border-neutral-700 transition-colors">Cancel</button>
-          </div>
+    <div x-show="showPairingModal" x-cloak class="modal-overlay" @click.self="showPairingModal = false">
+      <div class="modal-card modal-sm">
+        <h3 class="modal-title mb-4">Approve Channel Access</h3>
+        <div class="form-group">
+          <label class="label">Channel</label>
+          <select x-model="pairingChannel" class="select">
+            <option value="">Select channel...</option>
+            <option value="telegram">Telegram</option>
+            <option value="discord">Discord</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="label">Pairing Code</label>
+          <input x-model="pairingCode" type="text" placeholder="e.g. 3EY4PUYS" class="input" />
+        </div>
+        <div class="btn-pair">
+          <button @click="approvePairing()" class="btn btn-primary">Approve</button>
+          <button @click="showPairingModal = false" class="btn btn-close-full" style="margin-top:0">Cancel</button>
         </div>
       </div>
     </div>
+
   </div>
 </body>
 </html>

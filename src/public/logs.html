@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🦞 OpenClaw — Server Logs</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('logsApp', () => ({
+      logsContent: '',
+      autoScroll: true,
+      eventSource: null,
+      connected: false,
+
+      init() {
+        this.connect();
+      },
+
+      connect() {
+        if (this.eventSource) this.eventSource.close();
+        this.connected = false;
+        const es = new EventSource('/setup/api/logs/stream');
+        this.eventSource = es;
+        es.onopen = () => { this.connected = true; };
+        es.onmessage = (e) => {
+          try {
+            const line = JSON.parse(e.data);
+            this.logsContent += line + '\n';
+            if (this.autoScroll) {
+              this.$nextTick(() => {
+                const el = this.$refs.viewer;
+                if (el) el.scrollTop = el.scrollHeight;
+              });
+            }
+          } catch {}
+        };
+        es.onerror = () => {
+          es.close();
+          this.eventSource = null;
+          this.connected = false;
+          setTimeout(() => this.connect(), 2000);
+        };
+      },
+
+      clear() {
+        this.logsContent = '';
+      },
+
+      async download() {
+        try {
+          const res = await fetch('/setup/api/logs?lines=5000', { credentials: 'same-origin' });
+          const j = await res.json();
+          if (!j.ok) return;
+          const blob = new Blob([j.lines.join('\n')], { type: 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'server.log';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch {}
+      },
+
+      destroy() {
+        if (this.eventSource) {
+          this.eventSource.close();
+          this.eventSource = null;
+        }
+      }
+    }));
+  });
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+</head>
+<body x-data="logsApp()">
+  <div class="logs-page">
+    <div class="logs-toolbar">
+      <div class="logs-toolbar-left">
+        <a href="/setup" class="nav-back">
+          <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          Setup
+        </a>
+        <h1 class="logs-page-title">Server Logs</h1>
+        <span class="logs-status-dot" :class="connected ? 'status-dot-green' : 'status-dot-red'"></span>
+      </div>
+      <div class="logs-toolbar-right">
+        <label class="log-autoscroll-toggle">
+          <input type="checkbox" x-model="autoScroll" />
+          <span class="text-xs text-muted">Auto-scroll</span>
+        </label>
+        <button @click="download()" class="btn-icon" title="Download full log">
+          <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        </button>
+        <button @click="clear()" class="btn-icon" title="Clear display">
+          <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </button>
+      </div>
+    </div>
+    <pre x-ref="viewer" class="logs-page-viewer" x-text="logsContent || 'Connecting to log stream...'"></pre>
+  </div>
+</body>
+</html>

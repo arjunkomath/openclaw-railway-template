@@ -5,60 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🦞 OpenClaw TUI</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet" href="/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style type="text/tailwindcss">
-    @theme {
-      --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
-    }
-  </style>
-  <style>
-    html, body {
-      overflow: hidden;
-    }
-    #terminal-container {
-      width: 100%;
-      height: calc(100vh - 56px);
-      overflow: hidden;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    .animate-spin {
-      animation: spin 0.8s linear infinite;
-    }
-  </style>
 </head>
-<body class="bg-neutral-950 text-neutral-100 min-h-screen font-sans">
-  <div class="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
-    <div class="flex items-center gap-3">
+<body class="tui-body">
+  <div class="tui-header">
+    <div class="tui-logo-section">
       <picture>
-        <img src="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text.png" alt="OpenClaw" class="h-6">
+        <img src="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text.png" alt="OpenClaw" class="tui-logo">
       </picture>
-      <span class="text-neutral-500 text-sm">Terminal</span>
+      <span class="tui-label">Terminal</span>
     </div>
-    <div id="status" class="flex items-center gap-2 text-sm">
-      <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
-      <span class="text-neutral-400">Connecting...</span>
+    <div id="status" class="tui-status">
+      <span class="status-dot status-dot-yellow"></span>
+      <span class="status-text">Connecting...</span>
     </div>
   </div>
 
-  <div id="loading-overlay" class="absolute inset-0 top-[56px] bg-neutral-950 flex items-center justify-center z-40">
+  <div id="loading-overlay" class="tui-loading-overlay">
     <div class="text-center">
-      <div class="w-8 h-8 border-2 border-neutral-700 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-      <p class="text-neutral-400 text-sm">Starting terminal session...</p>
+      <div class="tui-spinner"></div>
+      <p class="tui-loading-text">Starting terminal session...</p>
     </div>
   </div>
 
   <div id="terminal-container"></div>
 
-  <div id="error-overlay" class="hidden fixed inset-0 bg-neutral-950/90 flex items-center justify-center z-50">
-    <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6 max-w-md mx-4 text-center">
-      <div class="text-red-400 text-lg font-medium mb-2" id="error-title">Connection Error</div>
-      <div class="text-neutral-400 text-sm mb-4" id="error-message"></div>
-      <button onclick="location.reload()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+  <div id="error-overlay" class="tui-error-overlay hidden">
+    <div class="tui-error-card">
+      <div class="tui-error-title" id="error-title">Connection Error</div>
+      <div class="tui-error-msg" id="error-message"></div>
+      <button onclick="location.reload()" class="tui-reconnect-btn">
         Reconnect
       </button>
     </div>
@@ -77,14 +56,14 @@
 
     function setStatus(state, text) {
       const colors = {
-        connecting: 'bg-yellow-500',
-        connected: 'bg-green-500',
-        disconnected: 'bg-red-500',
-        error: 'bg-red-500'
+        connecting: 'status-dot-yellow',
+        connected: 'status-dot-green',
+        disconnected: 'status-dot-red',
+        error: 'status-dot-red'
       };
       statusEl.innerHTML = `
-        <span class="w-2 h-2 rounded-full ${colors[state] || colors.error}"></span>
-        <span class="text-neutral-400">${text}</span>
+        <span class="status-dot ${colors[state] || colors.error}"></span>
+        <span class="status-text">${text}</span>
       `;
     }
 

@@ -14,7 +14,7 @@ RUN apk add --no-cache \
   linux-headers \
   cmake
 
-RUN npm install -g openclaw@latest
+RUN npm install -g openclaw@2026.3.8
 
 WORKDIR /app
 
