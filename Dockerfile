@@ -15,6 +15,7 @@ RUN apt-get update \
 RUN npm install -g openclaw@2026.3.13 clawhub@latest
 
 WORKDIR /app
+ENV NODE_OPTIONS="--max-old-space-size=800"
 
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable && pnpm install --frozen-lockfile --prod
