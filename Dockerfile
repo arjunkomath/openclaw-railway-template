@@ -1,4 +1,4 @@
-FROM node:22-bookworm
+FROM node:22-noble
 
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
