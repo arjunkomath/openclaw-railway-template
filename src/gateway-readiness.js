@@ -5,7 +5,7 @@ export function canServeGatewayRequest({
   reachable,
 }) {
   if (!configured) return false;
-  return (hasProcessHandle && !starting) || reachable;
+  return reachable;
 }
 
 export function describeGatewayHealth({
@@ -29,6 +29,6 @@ export function describeGatewayHealth({
     gatewayRunning: hasProcessHandle && !starting,
     gatewayStarting: starting,
     gatewayReachable: reachable,
-    statusCode: configured && !serving && !starting ? 503 : 200,
+    statusCode: configured && !reachable && !starting ? 503 : 200,
   };
 }

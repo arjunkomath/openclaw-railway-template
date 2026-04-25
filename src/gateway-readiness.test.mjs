@@ -48,6 +48,24 @@ test("does not serve gateway requests while configured gateway is unreachable", 
   );
 });
 
+test("does not treat a process handle as reachable gateway readiness", () => {
+  assert.deepEqual(
+    describeGatewayHealth({
+      configured: true,
+      hasProcessHandle: true,
+      starting: false,
+      reachable: false,
+    }),
+    {
+      gateway: "starting",
+      gatewayRunning: true,
+      gatewayStarting: false,
+      gatewayReachable: false,
+      statusCode: 503,
+    },
+  );
+});
+
 test("marks configured stopped gateway unhealthy for Railway recovery", () => {
   assert.deepEqual(
     describeGatewayHealth({

@@ -189,24 +189,34 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function probeGatewayOnce() {
+async function probeGatewayOnce(opts = {}) {
   const endpoints = ["/openclaw", "/", "/health"];
+  const timeoutMs = opts.timeoutMs ?? 2000;
 
   for (const endpoint of endpoints) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const res = await fetch(`${GATEWAY_TARGET}${endpoint}`, {
         method: "GET",
+        signal: controller.signal,
       });
-      if (res) {
+      if (res.status < 500) {
         return { ok: true, endpoint };
       }
     } catch (err) {
-      if (err.code !== "ECONNREFUSED" && err.cause?.code !== "ECONNREFUSED") {
+      if (
+        err.name !== "AbortError" &&
+        err.code !== "ECONNREFUSED" &&
+        err.cause?.code !== "ECONNREFUSED"
+      ) {
         const msg = err.code || err.message;
         if (msg !== "fetch failed" && msg !== "UND_ERR_CONNECT_TIMEOUT") {
           log.warn("gateway", `health check error: ${msg}`);
         }
       }
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
