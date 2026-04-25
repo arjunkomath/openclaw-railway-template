@@ -10,8 +10,6 @@ test("serves gateway requests when a detached gateway is reachable", () => {
   assert.equal(
     canServeGatewayRequest({
       configured: true,
-      hasProcessHandle: false,
-      starting: false,
       reachable: true,
     }),
     true,
@@ -40,8 +38,6 @@ test("does not serve gateway requests while configured gateway is unreachable", 
   assert.equal(
     canServeGatewayRequest({
       configured: true,
-      hasProcessHandle: false,
-      starting: false,
       reachable: false,
     }),
     false,

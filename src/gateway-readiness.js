@@ -1,9 +1,4 @@
-export function canServeGatewayRequest({
-  configured,
-  hasProcessHandle,
-  starting,
-  reachable,
-}) {
+export function canServeGatewayRequest({ configured, reachable }) {
   if (!configured) return false;
   return reachable;
 }
@@ -16,8 +11,6 @@ export function describeGatewayHealth({
 }) {
   const serving = canServeGatewayRequest({
     configured,
-    hasProcessHandle,
-    starting,
     reachable,
   });
   return {

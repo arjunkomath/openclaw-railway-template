@@ -1444,8 +1444,6 @@ app.use(async (req, res) => {
       if (
         !canServeGatewayRequest({
           configured: true,
-          hasProcessHandle: isGatewayReady(),
-          starting: isGatewayStarting(),
           reachable: gatewayReachable,
         })
       ) {
