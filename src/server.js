@@ -8,6 +8,10 @@ import express from "express";
 import httpProxy from "http-proxy";
 import pty from "node-pty";
 import { WebSocketServer } from "ws";
+import {
+  canServeGatewayRequest,
+  describeGatewayHealth,
+} from "./gateway-readiness.js";
 
 const PORT = Number.parseInt(process.env.PORT ?? "8080", 10);
 const STATE_DIR =
@@ -423,36 +427,32 @@ app.get("/styles.css", (_req, res) => {
 });
 
 app.get("/healthz", async (_req, res) => {
-  let gateway = "unconfigured";
-  if (isConfigured()) {
-    gateway = isGatewayReady() ? "ready" : "starting";
-  }
-  res.json({ ok: true, gateway });
+  const configured = isConfigured();
+  const health = describeGatewayHealth({
+    configured,
+    hasProcessHandle: isGatewayReady(),
+    starting: isGatewayStarting(),
+    reachable: configured ? (await probeGatewayOnce()).ok : false,
+  });
+  res.json({ ok: true, gateway: health.gateway });
 });
 
 app.get("/setup/healthz", async (_req, res) => {
   const configured = isConfigured();
-  const gatewayRunning = isGatewayReady();
-  const starting = isGatewayStarting();
-  let gatewayReachable = false;
+  const health = describeGatewayHealth({
+    configured,
+    hasProcessHandle: isGatewayReady(),
+    starting: isGatewayStarting(),
+    reachable: configured ? (await probeGatewayOnce()).ok : false,
+  });
 
-  if (gatewayRunning) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
-      const r = await fetch(`${GATEWAY_TARGET}/`, { signal: controller.signal });
-      clearTimeout(timeout);
-      gatewayReachable = r !== null;
-    } catch {}
-  }
-
-  res.json({
+  res.status(health.statusCode).json({
     ok: true,
     wrapper: true,
     configured,
-    gatewayRunning,
-    gatewayStarting: starting,
-    gatewayReachable,
+    gatewayRunning: health.gatewayRunning,
+    gatewayStarting: health.gatewayStarting,
+    gatewayReachable: health.gatewayReachable,
   });
 });
 
@@ -1421,15 +1421,24 @@ app.use(async (req, res) => {
 
   if (isConfigured()) {
     if (!isGatewayReady()) {
+      let gatewayReachable = false;
       try {
         await ensureGatewayRunning();
+        gatewayReachable = (await probeGatewayOnce()).ok;
       } catch {
         return res
           .status(503)
           .sendFile(path.join(process.cwd(), "src", "public", "loading.html"));
       }
 
-      if (!isGatewayReady()) {
+      if (
+        !canServeGatewayRequest({
+          configured: true,
+          hasProcessHandle: isGatewayReady(),
+          starting: isGatewayStarting(),
+          reachable: gatewayReachable,
+        })
+      ) {
         return res
           .status(503)
           .sendFile(path.join(process.cwd(), "src", "public", "loading.html"));

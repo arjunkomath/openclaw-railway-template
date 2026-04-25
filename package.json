@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "node src/server.js",
     "start": "node src/server.js",
-    "lint": "node -c src/server.js"
+    "lint": "node -c src/server.js",
+    "test": "node --test src/*.test.mjs"
   },
   "dependencies": {
     "express": "^5.1.0",
