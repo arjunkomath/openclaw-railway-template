@@ -6,10 +6,22 @@ RUN apt-get update \
     curl \
     git \
     gosu \
+    gnupg \
+    iptables \
+    iproute2 \
     procps \
     python3 \
     build-essential \
     zip \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN install -d -m 0755 /usr/share/keyrings \
+  && curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg \
+       -o /usr/share/keyrings/tailscale-archive-keyring.gpg \
+  && curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list \
+       -o /etc/apt/sources.list.d/tailscale.list \
+  && apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tailscale \
   && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g openclaw@2026.5.2
