@@ -2090,6 +2090,106 @@ app.use(async (req, res) => {
   return proxy.web(req, res, { target: GATEWAY_TARGET });
 });
 
+
+function ensureProcurementRuntimeConfig() {
+  const p = configPath();
+  if (!fs.existsSync(p)) return false;
+
+  let config;
+  try {
+    config = JSON.parse(fs.readFileSync(p, "utf8"));
+  } catch (err) {
+    log.warn("procurement-config", `could not read config: ${err.message}`);
+    return false;
+  }
+
+  let changed = false;
+
+  config.session = config.session || {};
+  if (config.session.dmScope !== "per-channel-peer") {
+    config.session.dmScope = "per-channel-peer";
+    changed = true;
+  }
+
+  config.tools = config.tools || {};
+  if (config.tools.profile == null) {
+    config.tools.profile = "full";
+    changed = true;
+  }
+  if (config.tools.codeMode !== false) {
+    config.tools.codeMode = false;
+    changed = true;
+  }
+
+  config.models = config.models || {};
+  if (!config.models.mode) {
+    config.models.mode = "merge";
+    changed = true;
+  }
+  config.models.providers = config.models.providers || {};
+  const existingDeepSeek = config.models.providers.deepseek || {};
+  const existingModels = Array.isArray(existingDeepSeek.models) ? existingDeepSeek.models : [];
+  const byId = new Map(existingModels.map((m) => [m?.id, m]));
+
+  if (!byId.has("deepseek-v4-pro")) {
+    byId.set("deepseek-v4-pro", {
+      id: "deepseek-v4-pro",
+      name: "DeepSeek V4 Pro",
+      reasoning: true,
+      input: ["text"],
+      contextWindow: 1000000,
+      maxTokens: 384000
+    });
+    changed = true;
+  }
+  if (!byId.has("deepseek-v4-flash")) {
+    byId.set("deepseek-v4-flash", {
+      id: "deepseek-v4-flash",
+      name: "DeepSeek V4 Flash",
+      reasoning: true,
+      input: ["text"],
+      contextWindow: 1000000,
+      maxTokens: 384000
+    });
+    changed = true;
+  }
+
+  const nextDeepSeek = {
+    ...existingDeepSeek,
+    baseUrl: existingDeepSeek.baseUrl || "https://api.deepseek.com",
+    apiKey: existingDeepSeek.apiKey || "${DEEPSEEK_API_KEY}",
+    api: existingDeepSeek.api || "openai-completions",
+    models: [...byId.values()]
+  };
+
+  if (JSON.stringify(existingDeepSeek) !== JSON.stringify(nextDeepSeek)) {
+    config.models.providers.deepseek = nextDeepSeek;
+    changed = true;
+  }
+
+  config.agents = config.agents || {};
+  config.agents.defaults = config.agents.defaults || {};
+  config.agents.defaults.model = config.agents.defaults.model || {};
+  if (config.agents.defaults.model.primary !== "deepseek/deepseek-v4-pro") {
+    config.agents.defaults.model.primary = "deepseek/deepseek-v4-pro";
+    changed = true;
+  }
+
+  if (!changed) return false;
+
+  const tmp = `${p}.tmp-procurement-${process.pid}-${Date.now()}`;
+  fs.writeFileSync(tmp, JSON.stringify(config, null, 2) + "\n", {
+    encoding: "utf8",
+    mode: 0o600
+  });
+  fs.renameSync(tmp, p);
+  log.info(
+    "procurement-config",
+    "enforced per-peer WhatsApp sessions, direct tool schemas, full tool profile, and explicit DeepSeek provider metadata"
+  );
+  return true;
+}
+
 const server = app.listen(PORT, () => {
   log.info("wrapper", `listening on port ${PORT}`);
   log.info("wrapper", `setup wizard: http://localhost:${PORT}/setup`);
@@ -2098,6 +2198,11 @@ const server = app.listen(PORT, () => {
 
   if (isConfigured()) {
     (async () => {
+      try {
+        ensureProcurementRuntimeConfig();
+      } catch (err) {
+        log.warn("procurement-config", `runtime config enforcement failed: ${err.message}`);
+      }
       try {
         log.info("wrapper", "running openclaw doctor --fix...");
         const dr = await runCmd(OPENCLAW_NODE, clawArgs(["doctor", "--fix"]));
