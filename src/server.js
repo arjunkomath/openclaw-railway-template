@@ -544,6 +544,81 @@ const setupRateLimiter = {
   },
 };
 
+function requireInternalToolAuth(req, res, next) {
+  const expected = process.env.OPENCLAW_TOOL_API_KEY?.trim();
+  if (!expected) {
+    return res.status(503).json({ ok: false, error: "OPENCLAW_TOOL_API_KEY is not configured" });
+  }
+
+  const provided = String(req.headers["x-openclaw-key"] || "").trim();
+  if (!provided) {
+    return res.status(401).json({ ok: false, error: "Missing X-OpenClaw-Key" });
+  }
+
+  const providedHash = crypto.createHash("sha256").update(provided).digest();
+  const expectedHash = crypto.createHash("sha256").update(expected).digest();
+  if (!crypto.timingSafeEqual(providedHash, expectedHash)) {
+    return res.status(401).json({ ok: false, error: "Invalid X-OpenClaw-Key" });
+  }
+  return next();
+}
+
+function normalizeWhatsAppNumber(value) {
+  const raw = String(value || "").trim();
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 8 || digits.length > 15) {
+    throw new Error("phone_number must contain 8 to 15 digits");
+  }
+  return "+" + digits;
+}
+
+async function readWhatsAppAllowlist() {
+  const result = await runCmd(
+    OPENCLAW_NODE,
+    clawArgs(["config", "get", "channels.whatsapp.allowFrom"]),
+  );
+
+  if (result.code !== 0) return [];
+
+  const clean = stripAnsi(result.output).trim();
+  if (!clean) return [];
+
+  try {
+    const parsed = JSON.parse(clean);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeWhatsAppAllowlist(values) {
+  const unique = [...new Set(values.map(String))].sort();
+
+  const policyResult = await runCmd(
+    OPENCLAW_NODE,
+    clawArgs(["config", "set", "channels.whatsapp.dmPolicy", "allowlist"]),
+  );
+  if (policyResult.code !== 0) {
+    throw new Error("Failed to set WhatsApp dmPolicy=allowlist");
+  }
+
+  const allowResult = await runCmd(
+    OPENCLAW_NODE,
+    clawArgs([
+      "config",
+      "set",
+      "--json",
+      "channels.whatsapp.allowFrom",
+      JSON.stringify(unique),
+    ]),
+  );
+  if (allowResult.code !== 0) {
+    throw new Error("Failed to update WhatsApp allowFrom");
+  }
+
+  return unique;
+}
+
 function requireSetupAuth(req, res, next) {
   if (!SETUP_PASSWORD) {
     return res
@@ -595,6 +670,62 @@ app.get("/healthz", async (_req, res) => {
     reachable: configured ? (await probeGatewayOnce()).ok : false,
   });
   res.json({ ok: true, gateway: health.gateway });
+});
+
+app.get("/internal/whatsapp/allowlist", requireInternalToolAuth, async (_req, res) => {
+  try {
+    const allowFrom = await readWhatsAppAllowlist();
+    res.json({ ok: true, dmPolicy: "allowlist", allowFrom });
+  } catch (err) {
+    log.error("whatsapp-allowlist", err?.message || String(err));
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+app.post("/internal/whatsapp/allowlist", requireInternalToolAuth, async (req, res) => {
+  try {
+    const action = String(req.body?.action || "add").trim().toLowerCase();
+    if (!["add", "remove"].includes(action)) {
+      return res.status(400).json({ ok: false, error: "action must be add or remove" });
+    }
+
+    const phoneNumber = normalizeWhatsAppNumber(req.body?.phone_number);
+    const current = await readWhatsAppAllowlist();
+    const normalizedCurrent = current
+      .filter((entry) => entry !== "*")
+      .map((entry) => {
+        try { return normalizeWhatsAppNumber(entry); } catch { return entry; }
+      });
+
+    let next;
+    if (action === "add") {
+      next = [...normalizedCurrent, phoneNumber];
+    } else {
+      next = normalizedCurrent.filter((entry) => entry !== phoneNumber);
+    }
+
+    const allowFrom = await writeWhatsAppAllowlist(next);
+    log.info("whatsapp-allowlist", `${action} ${phoneNumber}; count=${allowFrom.length}`);
+    res.json({ ok: true, action, phone_number: phoneNumber, allowFrom });
+  } catch (err) {
+    log.error("whatsapp-allowlist", err?.message || String(err));
+    res.status(400).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+app.put("/internal/whatsapp/allowlist", requireInternalToolAuth, async (req, res) => {
+  try {
+    if (!Array.isArray(req.body?.phone_numbers)) {
+      return res.status(400).json({ ok: false, error: "phone_numbers must be an array" });
+    }
+    const phoneNumbers = req.body.phone_numbers.map(normalizeWhatsAppNumber);
+    const allowFrom = await writeWhatsAppAllowlist(phoneNumbers);
+    log.info("whatsapp-allowlist", `replaced allowlist; count=${allowFrom.length}`);
+    res.json({ ok: true, action: "replace", allowFrom });
+  } catch (err) {
+    log.error("whatsapp-allowlist", err?.message || String(err));
+    res.status(400).json({ ok: false, error: err?.message || String(err) });
+  }
 });
 
 app.get("/setup/healthz", async (_req, res) => {
