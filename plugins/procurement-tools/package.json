@@ -11,16 +11,9 @@
   "dependencies": {
     "typebox": "^1.1.38"
   },
-  "peerDependencies": {
-    "openclaw": ">=2026.10.1"
-  },
   "openclaw": {
     "extensions": [
       "./dist/index.js"
-    ],
-    "compat": {
-      "pluginApi": ">=2026.10.1",
-      "minGatewayVersion": "2026.10.1"
-    }
+    ]
   }
 }
