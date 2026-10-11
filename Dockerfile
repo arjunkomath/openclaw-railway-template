@@ -32,7 +32,8 @@ COPY plugins ./plugins
 RUN cd /app/plugins/procurement-tools \
   && npm install --omit=dev --ignore-scripts \
   && openclaw plugins build --root /app/plugins/procurement-tools --entry ./dist/index.js \
-  && openclaw plugins validate --root /app/plugins/procurement-tools --entry ./dist/index.js
+  && openclaw plugins validate --root /app/plugins/procurement-tools --entry ./dist/index.js \
+  && openclaw plugins pack --root /app/plugins/procurement-tools --out /app/procurement-tools.tgz
 COPY --chmod=755 entrypoint.sh ./entrypoint.sh
 
 RUN useradd -m -s /bin/bash openclaw \
