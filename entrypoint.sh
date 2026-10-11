@@ -4,12 +4,18 @@ set -e
 chown -R openclaw:openclaw /data
 chmod 700 /data
 
-# Keep the installed procurement plugin runtime synchronized with the version
-# shipped in this deployment. Plugin installation metadata stays on /data,
-# while the executable entry is refreshed from the GitHub-built image.
-if [ -f /data/.openclaw/extensions/procurement-tools/dist/index.js ]; then
-  cp /app/plugins/procurement-tools/dist/index.js /data/.openclaw/extensions/procurement-tools/dist/index.js
-  chown openclaw:openclaw /data/.openclaw/extensions/procurement-tools/dist/index.js
+# Keep the persistent procurement plugin synchronized with the version built
+# into this image. Copy runtime dependencies too; the plugin imports typebox.
+if [ -d /data/.openclaw/extensions/procurement-tools ]; then
+  rm -rf /data/.openclaw/extensions/procurement-tools/dist
+  rm -rf /data/.openclaw/extensions/procurement-tools/node_modules
+  cp -a /app/plugins/procurement-tools/dist /data/.openclaw/extensions/procurement-tools/dist
+  cp -a /app/plugins/procurement-tools/node_modules /data/.openclaw/extensions/procurement-tools/node_modules
+  cp /app/plugins/procurement-tools/package.json /data/.openclaw/extensions/procurement-tools/package.json
+  if [ -f /app/plugins/procurement-tools/openclaw.plugin.json ]; then
+    cp /app/plugins/procurement-tools/openclaw.plugin.json /data/.openclaw/extensions/procurement-tools/openclaw.plugin.json
+  fi
+  chown -R openclaw:openclaw /data/.openclaw/extensions/procurement-tools
 fi
 
 if [ ! -d /data/.linuxbrew ]; then
