@@ -593,24 +593,40 @@ async function readWhatsAppAllowlist() {
 
 async function writeWhatsAppAllowlist(values) {
   const unique = [...new Set(values.map(String))].sort();
+  const p = configPath();
 
-  // dmPolicy is already configured as allowlist for this WhatsApp account.
-  // Do not rewrite it on every supplier mutation: OpenClaw can reject config
-  // writes while the gateway owns the live state. Only update allowFrom.
-  const allowResult = await runCmd(
-    OPENCLAW_NODE,
-    clawArgs([
-      "config",
-      "set",
-      "--json",
-      "channels.whatsapp.allowFrom",
-      JSON.stringify(unique),
-    ]),
-  );
-  if (allowResult.code !== 0) {
-    throw new Error("Failed to update WhatsApp allowFrom");
+  if (!fs.existsSync(p)) {
+    throw new Error("OpenClaw config file is not available");
   }
 
+  let config;
+  try {
+    config = JSON.parse(fs.readFileSync(p, "utf8"));
+  } catch (err) {
+    throw new Error(`Failed to read OpenClaw config: ${err.message}`);
+  }
+
+  config.channels = config.channels || {};
+  config.channels.whatsapp = config.channels.whatsapp || {};
+  config.channels.whatsapp.dmPolicy = "allowlist";
+  config.channels.whatsapp.allowFrom = unique;
+
+  const tmp = `${p}.tmp-allowlist-${process.pid}-${Date.now()}`;
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(config, null, 2) + "\n", {
+      encoding: "utf8",
+      mode: 0o600,
+    });
+    fs.renameSync(tmp, p);
+  } catch (err) {
+    try { fs.rmSync(tmp, { force: true }); } catch {}
+    throw new Error(`Failed to persist WhatsApp allowlist: ${err.message}`);
+  }
+
+  // Config mutation through the legacy CLI can be rejected while the Gateway
+  // owns state. The wrapper owns this file, so persist atomically then restart
+  // the Gateway once to guarantee the new admission list is live.
+  await restartGateway();
   return unique;
 }
 
