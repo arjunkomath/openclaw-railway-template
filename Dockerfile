@@ -28,6 +28,8 @@ RUN npm install -g pnpm@11.24.0 \
   && pnpm install --frozen-lockfile --prod
 
 COPY src ./src
+COPY plugins ./plugins
+RUN cd /app/plugins/procurement-tools && npm install --omit=dev --ignore-scripts
 COPY --chmod=755 entrypoint.sh ./entrypoint.sh
 
 RUN useradd -m -s /bin/bash openclaw \
