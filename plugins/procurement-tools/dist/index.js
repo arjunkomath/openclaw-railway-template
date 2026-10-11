@@ -4,9 +4,11 @@ import { defineToolPlugin } from "openclaw/plugin-sdk/tool-plugin";
 function cfg() {
   const baseUrl = (process.env.PROCUREMENT_API_BASE_URL || "").trim().replace(/\/+$/, "");
   const key = (process.env.OPENCLAW_TOOL_API_KEY || "").trim();
+  const clientId = (process.env.PROCUREMENT_CLIENT_ID || "").trim();
   if (!baseUrl) throw new Error("PROCUREMENT_API_BASE_URL is not configured.");
   if (!key) throw new Error("OPENCLAW_TOOL_API_KEY is not configured.");
-  return { baseUrl, key };
+  if (!clientId) throw new Error("PROCUREMENT_CLIENT_ID is not configured.");
+  return { baseUrl, key, clientId };
 }
 
 async function post(path, payload, signal) {
@@ -40,15 +42,15 @@ const plugin = defineToolPlugin({
       label: "Get Supplier Context",
       description: "Read supplier identity, active RFQs, recent conversation history, pause state, and active negotiation session. Use before supplier-facing procurement decisions.",
       parameters: Type.Object({
-        client_id: Id,
         supplier_id: Type.Optional(Id),
         phone_number: OptionalString,
         history_limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 }))
       }, { additionalProperties: false }),
       async execute(p, _c, ctx) {
         if (!p.supplier_id && !p.phone_number) throw new Error("supplier_id or phone_number is required.");
+        const { clientId } = cfg();
         return post("/openclaw/supplier-context", {
-          client_id: p.client_id,
+          client_id: clientId,
           supplier_id: p.supplier_id,
           phone_number: p.phone_number,
           history_limit: p.history_limit ?? 20
@@ -60,7 +62,6 @@ const plugin = defineToolPlugin({
       label: "Record Supplier Quote",
       description: "Persist supplier quote variants for an RFQ. Record the quote before requesting a negotiation decision.",
       parameters: Type.Object({
-        client_id: Id,
         supplier_id: Id,
         rfq_id: Id,
         variants: Type.Array(Type.Object({
@@ -76,8 +77,10 @@ const plugin = defineToolPlugin({
         confidence: OptionalString
       }, { additionalProperties: false }),
       async execute(p, _c, ctx) {
+        const { clientId } = cfg();
         return post("/openclaw/record-quote", {
           ...p,
+          client_id: clientId,
           confidence: p.confidence ?? "high",
           variants: p.variants.map(v => ({ ...v, is_available: v.is_available ?? true }))
         }, ctx?.signal);
@@ -88,21 +91,22 @@ const plugin = defineToolPlugin({
       label: "Mark Item Unavailable",
       description: "Record that the supplier reported an RFQ item unavailable or out of stock.",
       parameters: Type.Object({
-        client_id: Id,
         supplier_id: Id,
         rfq_id: Id,
         raw_message: OptionalString,
         source_message_id: OptionalString,
         reason: OptionalString
       }, { additionalProperties: false }),
-      execute: (p, _c, ctx) => post("/openclaw/mark-unavailable", p, ctx?.signal)
+      execute: (p, _c, ctx) => {
+        const { clientId } = cfg();
+        return post("/openclaw/mark-unavailable", { ...p, client_id: clientId }, ctx?.signal);
+      }
     }),
     tool({
       name: "procurement_get_negotiation_decision",
       label: "Get Negotiation Decision",
       description: "Ask the deterministic backend whether to counter, stop, or require human review. Never invent or alter the returned counter price.",
       parameters: Type.Object({
-        client_id: Id,
         supplier_id: Id,
         rfq_id: Id,
         supplier_quote: Type.Number({ exclusiveMinimum: 0 }),
@@ -111,7 +115,10 @@ const plugin = defineToolPlugin({
         extracted_quantity: Type.Optional(Type.Integer({ minimum: 1 })),
         extracted_variant: OptionalString
       }, { additionalProperties: false }),
-      execute: (p, _c, ctx) => post("/openclaw/negotiation-decision", p, ctx?.signal)
+      execute: (p, _c, ctx) => {
+        const { clientId } = cfg();
+        return post("/openclaw/negotiation-decision", { ...p, client_id: clientId }, ctx?.signal);
+      }
     }),
     tool({
       name: "procurement_request_human_attention",
@@ -127,8 +134,10 @@ const plugin = defineToolPlugin({
         metadata: Type.Optional(Type.Record(Type.String(), Type.Unknown()))
       }, { additionalProperties: false }),
       async execute(p, _c, ctx) {
+        const { clientId } = cfg();
         return post("/openclaw/human-attention", {
           ...p,
+          client_id: clientId,
           category: p.category ?? "other",
           raw_message: p.raw_message ?? "",
           metadata: p.metadata ?? {}
@@ -148,7 +157,10 @@ const plugin = defineToolPlugin({
         status: OptionalString,
         event_key: OptionalString
       }, { additionalProperties: false }),
-      execute: (p, _c, ctx) => post("/openclaw/log-message", p, ctx?.signal)
+      execute: (p, _c, ctx) => {
+        const { clientId } = cfg();
+        return post("/openclaw/log-message", { ...p, client_id: clientId }, ctx?.signal);
+      }
     })
   ]
 });
