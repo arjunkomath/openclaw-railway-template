@@ -705,6 +705,83 @@ app.get("/internal/openclaw/diagnostics", requireInternalToolAuth, async (_req, 
   res.json({ ok: true, results });
 });
 
+app.post("/internal/whatsapp/send", requireInternalToolAuth, async (req, res) => {
+  try {
+    const target = normalizeWhatsAppNumber(req.body?.phone_number);
+    const message = String(req.body?.message || "").trim();
+    if (!message) {
+      return res.status(400).json({ ok: false, error: "message is required" });
+    }
+    if (message.length > 10000) {
+      return res.status(413).json({ ok: false, error: "message is too long" });
+    }
+
+    const ready = await ensureGatewayRunning();
+    if (!ready?.ok) {
+      return res.status(503).json({ ok: false, error: "OpenClaw Gateway is not ready" });
+    }
+
+    const result = await runCmd(
+      OPENCLAW_NODE,
+      clawArgs([
+        "message",
+        "send",
+        "--channel",
+        "whatsapp",
+        "--target",
+        target,
+        "--message",
+        message,
+        "--json",
+      ]),
+    );
+
+    const clean = stripAnsi(result.output || "").trim();
+    let payload = null;
+    try {
+      payload = JSON.parse(clean);
+    } catch {
+      const lines = clean.split("\n").map((line) => line.trim()).filter(Boolean);
+      for (let i = lines.length - 1; i >= 0; i--) {
+        try {
+          payload = JSON.parse(lines[i]);
+          break;
+        } catch {}
+      }
+    }
+
+    if (result.code !== 0 || payload?.ok === false) {
+      const error = payload?.error || clean || `openclaw message send exited with code ${result.code}`;
+      log.error("whatsapp-send", `send failed target=${target}: ${String(error).slice(0, 500)}`);
+      return res.status(502).json({
+        ok: false,
+        error: String(error).slice(0, 1000),
+        deliveryStatus: payload?.deliveryStatus || null,
+      });
+    }
+
+    const messageId =
+      payload?.messageId ||
+      payload?.message_id ||
+      payload?.id ||
+      payload?.result?.messageId ||
+      payload?.result?.message_id ||
+      payload?.result?.id ||
+      null;
+
+    log.info("whatsapp-send", `sent target=${target} messageId=${messageId || "unknown"}`);
+    return res.json({
+      ok: true,
+      phone_number: target,
+      message_id: messageId,
+      result: payload,
+    });
+  } catch (err) {
+    log.error("whatsapp-send", err?.message || String(err));
+    return res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 app.post("/internal/whatsapp/allowlist/sync", requireInternalToolAuth, async (req, res) => {
   try {
     if (!Array.isArray(req.body?.phone_numbers)) {
