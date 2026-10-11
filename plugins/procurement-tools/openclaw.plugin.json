@@ -3,6 +3,14 @@
   "name": "MUAI Procurement Tools",
   "description": "Authenticated procurement tools for supplier context, quote recording, deterministic negotiation, human escalation, and message logging.",
   "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  },
+  "activation": {
+    "onStartup": true
+  },
   "contracts": {
     "tools": [
       "procurement_get_supplier_context",
@@ -12,10 +20,5 @@
       "procurement_request_human_attention",
       "procurement_log_message"
     ]
-  },
-  "configSchema": {
-    "type": "object",
-    "additionalProperties": false,
-    "properties": {}
   }
 }
