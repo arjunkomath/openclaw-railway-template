@@ -672,6 +672,28 @@ app.get("/healthz", async (_req, res) => {
   res.json({ ok: true, gateway: health.gateway });
 });
 
+app.get("/internal/openclaw/diagnostics", requireInternalToolAuth, async (_req, res) => {
+  const commands = {
+    version: ["--version"],
+    doctor: ["doctor", "--non-interactive"],
+    whatsapp: ["config", "get", "channels.whatsapp"],
+    allowedOrigins: ["config", "get", "gateway.controlUi.allowedOrigins"],
+    trustedProxies: ["config", "get", "gateway.trustedProxies"],
+    plugins: ["config", "get", "plugins"]
+  };
+
+  const results = {};
+  for (const [name, args] of Object.entries(commands)) {
+    const result = await runCmd(OPENCLAW_NODE, clawArgs(args));
+    results[name] = {
+      code: result.code,
+      output: stripAnsi(result.output || "").slice(0, 12000)
+    };
+  }
+
+  res.json({ ok: true, results });
+});
+
 app.get("/internal/whatsapp/allowlist", requireInternalToolAuth, async (_req, res) => {
   try {
     const allowFrom = await readWhatsAppAllowlist();
