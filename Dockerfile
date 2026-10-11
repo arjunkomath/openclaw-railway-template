@@ -20,33 +20,10 @@ RUN npm install -g \
   && node --version | grep -Eq '^v26\.' \
   && openclaw --version | grep -F 'OpenClaw 2026.10.1'
 
-# OpenClaw 2026.10.1 sends terminal provider/runtime errors to WhatsApp by default.
-# For a supplier-facing procurement channel those internal errors must never be exposed.
-# Patch the installed WhatsApp runtime to drop every ReplyPayload marked isError.
-RUN python3 - <<'PY'
-from pathlib import Path
-
-root = Path("/usr/local/lib/node_modules/openclaw")
-needle = 'payload.isError === true && info.kind !== "final"'
-replacement = 'payload.isError === true'
-matches = []
-
-for path in root.rglob("*.js"):
-    try:
-        text = path.read_text()
-    except Exception:
-        continue
-    if needle in text:
-        path.write_text(text.replace(needle, replacement))
-        matches.append(str(path))
-
-if not matches:
-    raise SystemExit("WhatsApp error-suppression patch target not found; refusing to build")
-
-print("Patched WhatsApp terminal error delivery in:")
-for match in matches:
-    print(match)
-PY
+# Inspect the compiled OpenClaw WhatsApp error-delivery implementation so the
+# production patch targets the actual npm build rather than source-only text.
+RUN grep -R -n -E 'isError|resolveWhatsAppDeliverablePayload|provider exploded' \
+      /usr/local/lib/node_modules/openclaw 2>/dev/null | grep -E 'whatsapp|inbound-dispatch|auto-reply' | head -120 || true
 RUN npm install -g clawhub@latest
 
 WORKDIR /app
