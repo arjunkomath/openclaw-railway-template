@@ -689,6 +689,27 @@ app.get("/internal/openclaw/diagnostics", requireInternalToolAuth, async (_req, 
   res.json({ ok: true, results });
 });
 
+app.post("/internal/whatsapp/allowlist/sync", requireInternalToolAuth, async (req, res) => {
+  try {
+    if (!Array.isArray(req.body?.phone_numbers)) {
+      return res.status(400).json({ ok: false, error: "phone_numbers must be an array" });
+    }
+    const incoming = req.body.phone_numbers.map(normalizeWhatsAppNumber);
+    const current = await readWhatsAppAllowlist();
+    const normalizedCurrent = current
+      .filter((entry) => entry !== "*")
+      .map((entry) => {
+        try { return normalizeWhatsAppNumber(entry); } catch { return entry; }
+      });
+    const allowFrom = await writeWhatsAppAllowlist([...normalizedCurrent, ...incoming]);
+    log.info("whatsapp-allowlist", `bulk merged ${incoming.length} supplier numbers; count=${allowFrom.length}`);
+    res.json({ ok: true, action: "merge", allowFrom });
+  } catch (err) {
+    log.error("whatsapp-allowlist", err?.message || String(err));
+    res.status(400).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 app.get("/internal/whatsapp/allowlist", requireInternalToolAuth, async (_req, res) => {
   try {
     const allowFrom = await readWhatsAppAllowlist();
