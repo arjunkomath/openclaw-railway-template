@@ -11,10 +11,4 @@ fi
 rm -rf /home/linuxbrew/.linuxbrew
 ln -sfn /data/.linuxbrew /home/linuxbrew/.linuxbrew
 
-PLUGIN_DIR="/app/plugins/procurement-tools"
-if ! gosu openclaw openclaw plugins inspect procurement-tools >/dev/null 2>&1; then
-  echo "[entrypoint] installing MUAI procurement tools plugin..."
-  gosu openclaw openclaw plugins install --link "$PLUGIN_DIR" --force
-fi
-
 exec gosu openclaw node src/server.js
