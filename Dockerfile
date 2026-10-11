@@ -20,10 +20,6 @@ RUN npm install -g \
   && node --version | grep -Eq '^v26\.' \
   && openclaw --version | grep -F 'OpenClaw 2026.10.1'
 
-# Inspect the compiled OpenClaw WhatsApp error-delivery implementation so the
-# production patch targets the actual npm build rather than source-only text.
-RUN grep -R -n -E 'isError|resolveWhatsAppDeliverablePayload|provider exploded' \
-      /usr/local/lib/node_modules/openclaw 2>/dev/null | grep -E 'whatsapp|inbound-dispatch|auto-reply' | head -120 || true
 RUN npm install -g clawhub@latest
 
 WORKDIR /app
