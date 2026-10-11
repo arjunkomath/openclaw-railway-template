@@ -594,14 +594,9 @@ async function readWhatsAppAllowlist() {
 async function writeWhatsAppAllowlist(values) {
   const unique = [...new Set(values.map(String))].sort();
 
-  const policyResult = await runCmd(
-    OPENCLAW_NODE,
-    clawArgs(["config", "set", "channels.whatsapp.dmPolicy", "allowlist"]),
-  );
-  if (policyResult.code !== 0) {
-    throw new Error("Failed to set WhatsApp dmPolicy=allowlist");
-  }
-
+  // dmPolicy is already configured as allowlist for this WhatsApp account.
+  // Do not rewrite it on every supplier mutation: OpenClaw can reject config
+  // writes while the gateway owns the live state. Only update allowFrom.
   const allowResult = await runCmd(
     OPENCLAW_NODE,
     clawArgs([
