@@ -29,7 +29,10 @@ RUN npm install -g pnpm@11.24.0 \
 
 COPY src ./src
 COPY plugins ./plugins
-RUN cd /app/plugins/procurement-tools && npm install --omit=dev --ignore-scripts
+RUN cd /app/plugins/procurement-tools \
+  && npm install --omit=dev --ignore-scripts \
+  && openclaw plugins build --root /app/plugins/procurement-tools --entry ./dist/index.js \
+  && openclaw plugins validate --root /app/plugins/procurement-tools --entry ./dist/index.js
 COPY --chmod=755 entrypoint.sh ./entrypoint.sh
 
 RUN useradd -m -s /bin/bash openclaw \
