@@ -166,6 +166,9 @@ function looksLikeInternalProviderError(content) {
     /provider.*rate.?limit/i,
     /model.*not found.*Control UI/i,
     /AI service is temporarily overloaded/i,
+    /OpenClaw couldn't produce or deliver a reply/i,
+    /ask the operator to check the gateway logs/i,
+    /Reference:\s*[0-9a-f-]{36}/i,
     /\[code=(?:RESOURCE_EXHAUSTED|UNAVAILABLE|NOT_FOUND)\]/i
   ];
 
