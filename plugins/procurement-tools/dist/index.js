@@ -30,7 +30,7 @@ async function post(path, payload, signal) {
 const Id = Type.String();
 const OptionalString = Type.Optional(Type.String());
 
-export default defineToolPlugin({
+const plugin = defineToolPlugin({
   id: "procurement-tools",
   name: "MUAI Procurement Tools",
   description: "Authenticated tools backed by the deterministic MUAI procurement backend.",
@@ -152,3 +152,45 @@ export default defineToolPlugin({
     })
   ]
 });
+
+function looksLikeInternalProviderError(content) {
+  const text = String(content || "").trim();
+  if (!text) return false;
+
+  const strongSignals = [
+    /Google Generative AI API error\s*\(\d{3}\)/i,
+    /RESOURCE_EXHAUSTED/i,
+    /All models failed/i,
+    /Context overflow:\s*prompt too large/i,
+    /Request too large for model/i,
+    /provider.*rate.?limit/i,
+    /model.*not found.*Control UI/i,
+    /AI service is temporarily overloaded/i,
+    /\[code=(?:RESOURCE_EXHAUSTED|UNAVAILABLE|NOT_FOUND)\]/i
+  ];
+
+  return strongSignals.some((pattern) => pattern.test(text));
+}
+
+const registerProcurementTools = plugin.register.bind(plugin);
+plugin.register = (api) => {
+  registerProcurementTools(api);
+
+  // Supplier-safety boundary: internal model/provider failures are operational
+  // data, never supplier-facing WhatsApp content.
+  api.on("message_sending", (event, context) => {
+    const channelId = String(context?.channelId || "").toLowerCase();
+    if (channelId !== "whatsapp") return undefined;
+    if (!looksLikeInternalProviderError(event?.content)) return undefined;
+
+    api.logger?.error?.(
+      "[supplier-safety] suppressed internal provider/runtime error from WhatsApp delivery"
+    );
+    return {
+      cancel: true,
+      cancelReason: "supplier_safety_provider_error"
+    };
+  });
+};
+
+export default plugin;
