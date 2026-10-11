@@ -258,6 +258,29 @@ async function syncAllowedOrigins() {
   }
 }
 
+async function syncWhatsAppErrorPolicy() {
+  const desired = "silent";
+  const current = await runCmd(
+    OPENCLAW_NODE,
+    clawArgs(["config", "get", "channels.whatsapp.errorPolicy"]),
+  );
+
+  if (current.code === 0 && stripAnsi(current.output).trim() === desired) {
+    return;
+  }
+
+  const result = await runCmd(
+    OPENCLAW_NODE,
+    clawArgs(["config", "set", "channels.whatsapp.errorPolicy", desired]),
+  );
+
+  if (result.code === 0) {
+    log.info("whatsapp", "set errorPolicy=silent so provider/runtime errors are never sent to suppliers");
+  } else {
+    log.warn("whatsapp", `failed to set errorPolicy=silent (exit=${result.code})`);
+  }
+}
+
 async function syncTrustedProxies() {
   const expected = ["127.0.0.1", "::1"];
   const current = await runCmd(
@@ -492,6 +515,7 @@ async function ensureGatewayRunning() {
     gatewayStarting = (async () => {
       await syncTrustedProxies();
       await syncAllowedOrigins();
+      await syncWhatsAppErrorPolicy();
       await startGateway();
       const ready = await waitForGatewayReady({ timeoutMs: 60_000 });
       if (!ready) {
