@@ -93,6 +93,10 @@ function activationGuidance(gate) {
       `Pending clarification: ${gate.pending_clarification ? "yes" : "no"}`,
       `Pending human attention: ${gate.pending_human_attention ? "yes" : "no"}`,
       "Treat the current message in the context of the supplier's real procurement state.",
+      "When multiple RFQs may match, do not list all active RFQs and do not guess. First call procurement_resolve_rfq_context.",
+      "Strong context wins: native WhatsApp reply/quote context, an existing active negotiation, or an explicit product/spec reference.",
+      "If the resolver returns AMBIGUOUS, persist any already-understood commercial terms with procurement_save_pending_commercial_draft, then ask one short clarification naming only the remaining 2-3 candidates.",
+      "When the supplier clarifies, resolve that draft with procurement_resolve_commercial_draft and continue using the preserved facts; never ask them to repeat price/delivery/quantity already captured.",
       "For any commercial action, use the Phase 2 commercial review loop before sending.",
       "Phase 2 negotiation: persist the supplier quote first, read procurement_get_negotiation_context, then choose your OWN counter/strategy.",
       "Judgment examples, not formulas: tiny supplier movement -> usually hold or move minimally; meaningful movement -> consider a controlled reciprocal concession; repeated refusal -> change tactic instead of repeating the exact same counter; favorable quote below target -> never negotiate upward; final above hard authority -> escalate.",
@@ -136,6 +140,66 @@ const plugin = defineToolPlugin({
           supplier_id: p.supplier_id,
           phone_number: p.phone_number,
           history_limit: p.history_limit ?? 20
+        }, ctx?.signal);
+      }
+    }),
+    tool({
+      name: "procurement_resolve_rfq_context",
+      label: "Resolve RFQ Context",
+      description: "Resolve the current supplier message against multiple open RFQs using strong context first: native reply context, active negotiation, explicit product/spec clues, then deduction. Returns RESOLVED or a reduced AMBIGUOUS candidate set of at most three RFQs. Use before asking clarification when more than one RFQ may apply.",
+      parameters: Type.Object({
+        supplier_id: Id,
+        message: Type.String(),
+        source_message_id: OptionalString,
+        reply_to_message_id: OptionalString,
+        reply_to_body: OptionalString,
+        extracted_facts: Type.Optional(Type.Record(Type.String(), Type.Unknown()))
+      }, { additionalProperties: false }),
+      execute: (p, _c, ctx) => {
+        const { clientId } = cfg();
+        return post("/openclaw/resolve-rfq-context", {
+          ...p,
+          client_id: clientId,
+          extracted_facts: p.extracted_facts ?? {}
+        }, ctx?.signal);
+      }
+    }),
+    tool({
+      name: "procurement_save_pending_commercial_draft",
+      label: "Save Pending Commercial Draft",
+      description: "Persist price, quantity, delivery, availability, or other extracted supplier terms before asking an RFQ clarification. Use whenever the commercial facts are understood but the exact RFQ is still ambiguous, so no detail is lost across clarification turns.",
+      parameters: Type.Object({
+        supplier_id: Id,
+        raw_message: Type.String(),
+        candidate_rfq_ids: Type.Array(Id, { maxItems: 3 }),
+        extracted_facts: Type.Record(Type.String(), Type.Unknown()),
+        source_message_id: OptionalString,
+        reply_to_message_id: OptionalString,
+        reply_to_body: OptionalString,
+        message_kind: OptionalString
+      }, { additionalProperties: false }),
+      execute: (p, _c, ctx) => {
+        const { clientId } = cfg();
+        return post("/openclaw/pending-commercial-draft", {
+          ...p,
+          client_id: clientId
+        }, ctx?.signal);
+      }
+    }),
+    tool({
+      name: "procurement_resolve_commercial_draft",
+      label: "Resolve Commercial Draft",
+      description: "Attach an existing pending commercial draft to the RFQ selected by the supplier's clarification. Returns the preserved extracted facts and raw message. Continue from those facts without asking the supplier to repeat them.",
+      parameters: Type.Object({
+        supplier_id: Id,
+        draft_id: Id,
+        rfq_id: Id
+      }, { additionalProperties: false }),
+      execute: (p, _c, ctx) => {
+        const { clientId } = cfg();
+        return post("/openclaw/resolve-commercial-draft", {
+          ...p,
+          client_id: clientId
         }, ctx?.signal);
       }
     }),
@@ -359,6 +423,9 @@ plugin.register = (api) => {
 
       const procurementTools = [
         "procurement_get_supplier_context",
+        "procurement_resolve_rfq_context",
+        "procurement_save_pending_commercial_draft",
+        "procurement_resolve_commercial_draft",
         "procurement_get_negotiation_context",
         "procurement_record_quote",
         "procurement_mark_unavailable",
