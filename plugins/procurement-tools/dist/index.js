@@ -43,16 +43,10 @@ const approvedCommercialBySession = new Map();
 // Short-lived, per-recipient decision for the inbound turn. This prevents the
 // model from overriding a negative activation decision with a social reply.
 const blockedInboundByPhone = new Map();
-const ACTIVATION_BLOCK_TTL_MS = 90_000;
+// Denials remain in force until the NEXT inbound activation-gate decision for
+// the same supplier. Slow model turns must not accidentally outlive a TTL.
 function blockedForCurrentTurn(phone) {
-  const key = normalizeSenderPhone(phone);
-  const entry = blockedInboundByPhone.get(key);
-  if (!entry) return false;
-  if (Date.now() - entry.at > ACTIVATION_BLOCK_TTL_MS) {
-    blockedInboundByPhone.delete(key);
-    return false;
-  }
-  return true;
+  return blockedInboundByPhone.has(normalizeSenderPhone(phone));
 }
 
 
@@ -529,7 +523,7 @@ plugin.register = (api) => {
       const decision = String(gate?.engagement_decision || "IGNORE").toUpperCase();
       // Never allow a response solely because a supplier is registered.
       if (decision !== "ENGAGE" || gate?.allow_autonomous_reply !== true) {
-        blockedInboundByPhone.set(phone, { at: Date.now(), reason: gate?.engagement_reason || "denied" });
+        blockedInboundByPhone.set(phone, { reason: gate?.engagement_reason || "denied" });
         return {
           appendContext: [
             "[MUAI ACTIVATION DENIED]",
@@ -558,7 +552,7 @@ plugin.register = (api) => {
         toolsAllow: procurementTools
       };
     } catch (err) {
-      blockedInboundByPhone.set(phone, { at: Date.now(), reason: "activation_lookup_failed" });
+      blockedInboundByPhone.set(phone, { reason: "activation_lookup_failed" });
       api.logger?.warn?.(
         `[procurement-activation] activation lookup failed: ${err?.message || err}`
       );
@@ -607,7 +601,9 @@ plugin.register = (api) => {
     const channelId = String(context?.channelId || "").toLowerCase();
     if (channelId !== "whatsapp") return undefined;
 
-    if (blockedForCurrentTurn(event?.to)) {
+    const deliverySessionKey = String(context?.sessionKey || "");
+    // Do not block independent scheduled/buyer-initiated outbound traffic.
+    if (deliverySessionKey.includes(":whatsapp:direct:") && blockedForCurrentTurn(event?.to)) {
       api.logger?.warn?.("[procurement-activation] suppressed unauthorized WhatsApp reply");
       return { cancel: true, cancelReason: "procurement_activation_denied" };
     }
