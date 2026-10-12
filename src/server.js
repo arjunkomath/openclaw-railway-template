@@ -2297,6 +2297,23 @@ function ensureProcurementRuntimeConfig() {
     changed = true;
   }
 
+  config.plugins = config.plugins || {};
+  config.plugins.entries = config.plugins.entries || {};
+  const procurementEntry = config.plugins.entries["procurement-tools"] || {};
+  const procurementHooks = procurementEntry.hooks || {};
+  const nextProcurementEntry = {
+    ...procurementEntry,
+    hooks: {
+      ...procurementHooks,
+      allowConversationAccess: true,
+      allowPromptInjection: true
+    }
+  };
+  if (JSON.stringify(procurementEntry) !== JSON.stringify(nextProcurementEntry)) {
+    config.plugins.entries["procurement-tools"] = nextProcurementEntry;
+    changed = true;
+  }
+
   config.tools = config.tools || {};
   if (config.tools.profile == null) {
     config.tools.profile = "full";
@@ -2371,7 +2388,7 @@ function ensureProcurementRuntimeConfig() {
   fs.renameSync(tmp, p);
   log.info(
     "procurement-config",
-    "enforced per-peer WhatsApp sessions, direct tool schemas, full tool profile, and explicit DeepSeek provider metadata"
+    "enforced per-peer WhatsApp sessions, procurement hook access, direct tool schemas, full tool profile, and explicit DeepSeek provider metadata"
   );
   return true;
 }
