@@ -40,6 +40,21 @@ function normalizeSenderPhone(value) {
 }
 
 const approvedCommercialBySession = new Map();
+// Short-lived, per-recipient decision for the inbound turn. This prevents the
+// model from overriding a negative activation decision with a social reply.
+const blockedInboundByPhone = new Map();
+const ACTIVATION_BLOCK_TTL_MS = 90_000;
+function blockedForCurrentTurn(phone) {
+  const key = normalizeSenderPhone(phone);
+  const entry = blockedInboundByPhone.get(key);
+  if (!entry) return false;
+  if (Date.now() - entry.at > ACTIVATION_BLOCK_TTL_MS) {
+    blockedInboundByPhone.delete(key);
+    return false;
+  }
+  return true;
+}
+
 
 function sessionKeyFromToolContext(ctx) {
   if (ctx?.memoryAudience?.kind === "conversation" && ctx.memoryAudience.sessionKey) {
@@ -113,8 +128,8 @@ function activationGuidance(gate) {
     "There is currently no active RFQ, negotiation, pending clarification, or pending human-attention workflow for this supplier.",
     "Do NOT invent an RFQ, price discussion, order, product, or procurement context.",
     "Classify the current message by meaning:",
-    "- Clearly casual/personal/social: usually return NO_REPLY. A brief natural casual reply is allowed only when it genuinely fits the conversation.",
-    "- Clearly business/procurement-related despite no active RFQ: you may send one short context-appropriate acknowledgement, then create Human Attention internally. Do not start negotiation or invent an RFQ.",
+    "- Greetings and personal messages: always return NO_REPLY, regardless of supplier identity. Wait for explicit procurement intent.",
+    "- Business without an authorized procurement context: return NO_REPLY; backend decides whether Human Attention is required.",
     "- Ambiguous/unclear: prefer NO_REPLY and create Human Attention internally. Do not guess.",
     "Never tell the supplier that a human escalation/Agent Attention was created.",
   ].join("\n");
@@ -511,6 +526,23 @@ plugin.register = (api) => {
         "procurement_log_message"
       ];
 
+      const decision = String(gate?.engagement_decision || "IGNORE").toUpperCase();
+      // Never allow a response solely because a supplier is registered.
+      if (decision !== "ENGAGE" || gate?.allow_autonomous_reply !== true) {
+        blockedInboundByPhone.set(phone, { at: Date.now(), reason: gate?.engagement_reason || "denied" });
+        return {
+          appendContext: [
+            "[MUAI ACTIVATION DENIED]",
+            "This WhatsApp message has not been authorized for autonomous procurement handling.",
+            "Return NO_REPLY. Do not greet, answer personal questions, or send a holding message.",
+            "A greeting by itself must remain silent (Option C).",
+            `Reason: ${gate?.engagement_reason || "unverified"}`
+          ].join("\n"),
+          toolsAllow: []
+        };
+      }
+      blockedInboundByPhone.delete(phone);
+
       if (!gate?.has_procurement_state) {
         return {
           appendContext: activationGuidance(gate),
@@ -526,6 +558,7 @@ plugin.register = (api) => {
         toolsAllow: procurementTools
       };
     } catch (err) {
+      blockedInboundByPhone.set(phone, { at: Date.now(), reason: "activation_lookup_failed" });
       api.logger?.warn?.(
         `[procurement-activation] activation lookup failed: ${err?.message || err}`
       );
@@ -534,7 +567,7 @@ plugin.register = (api) => {
           "[MUAI ACTIVATION FAIL-SAFE]",
           "Procurement activation state could not be verified.",
           "Do not guess or make a commercial commitment.",
-          "Prefer NO_REPLY unless a brief context-appropriate holding response is clearly necessary."
+          "Return NO_REPLY. An unverified activation may never send a supplier reply."
         ].join("\n"),
         toolsAllow: ["procurement_request_human_attention", "procurement_log_message"]
       };
@@ -573,6 +606,11 @@ plugin.register = (api) => {
   api.on("message_sending", (event, context) => {
     const channelId = String(context?.channelId || "").toLowerCase();
     if (channelId !== "whatsapp") return undefined;
+
+    if (blockedForCurrentTurn(event?.to)) {
+      api.logger?.warn?.("[procurement-activation] suppressed unauthorized WhatsApp reply");
+      return { cancel: true, cancelReason: "procurement_activation_denied" };
+    }
 
     if (looksLikeInternalProviderError(event?.content)) {
       api.logger?.error?.(
