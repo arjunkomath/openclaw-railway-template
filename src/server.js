@@ -264,17 +264,9 @@ async function syncAllowedOrigins() {
 }
 
 async function syncTrustedProxies() {
-  const expected = ["127.0.0.1", "::1"];
-  const changed = updateGatewayConfig((config) => {
-    config.gateway = config.gateway || {};
-    const current = Array.isArray(config.gateway.trustedProxies)
-      ? config.gateway.trustedProxies.map(String)
-      : [];
-    if (JSON.stringify(current) === JSON.stringify(expected)) return false;
-    config.gateway.trustedProxies = expected;
-    return true;
-  });
-  if (changed) log.info("gateway", `persisted trustedProxies ${JSON.stringify(expected)}`);
+  // Intentionally no-op. Gateway is loopback-only behind this authenticated
+  // wrapper; procurement APIs do not rely on forwarded client identity.
+  return;
 }
 
 let gatewayProc = null;
@@ -2285,6 +2277,16 @@ function ensureProcurementRuntimeConfig() {
   }
 
   let changed = false;
+
+  config.gateway = config.gateway || {};
+  if (config.gateway.mode !== "local") {
+    config.gateway.mode = "local";
+    changed = true;
+  }
+  if (Object.prototype.hasOwnProperty.call(config.gateway, "trustedProxies")) {
+    delete config.gateway.trustedProxies;
+    changed = true;
+  }
 
   config.session = config.session || {};
   if (config.session.dmScope !== "per-channel-peer") {
