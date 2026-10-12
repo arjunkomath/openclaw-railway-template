@@ -125,7 +125,6 @@ const plugin = defineToolPlugin({
       label: "Request Human Attention",
       description: "Create an Agent Attention flag for ambiguity, unauthorized trade-offs, supplier-final cases, or other human-review situations.",
       parameters: Type.Object({
-        client_id: Id,
         supplier_id: Id,
         rfq_id: Type.Optional(Id),
         reason: Type.String(),
@@ -149,7 +148,6 @@ const plugin = defineToolPlugin({
       label: "Log Supplier Message",
       description: "Log an inbound or outbound supplier message in the procurement backend. This tool does not send WhatsApp messages.",
       parameters: Type.Object({
-        client_id: Id,
         supplier_id: Id,
         direction: Type.Union([Type.Literal("inbound"), Type.Literal("outbound")]),
         body: Type.String(),
