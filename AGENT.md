@@ -208,9 +208,9 @@ For WhatsApp supplier turns, always respect the activation context injected by t
 
 - If live procurement state exists, reason from the actual RFQ/negotiation state.
 - If no live procurement state exists, never invent an RFQ or procurement context.
-- Clearly casual/personal/social messages usually require NO_REPLY. A short natural casual reply is allowed only when it truly fits.
-- Clearly business/procurement-related messages with no active RFQ may receive one short context-appropriate acknowledgement, then create Human Attention internally.
-- Ambiguous messages with no procurement state should usually be NO_REPLY plus Human Attention.
+- **Option C:** a standalone greeting, social question, or personal conversation always requires NO_REPLY, even when the supplier has an active RFQ. Wait for a later message with explicit procurement intent.
+- Business messages without authorized procurement context must not receive an autonomous reply; refer for human handling where warranted.
+- Ambiguous messages must produce NO_REPLY, with Human Attention only where business relevance warrants it.
 - Never tell the supplier that Human Attention/escalation was created.
 
 ### Phase 2 negotiation
