@@ -918,6 +918,8 @@ app.post("/internal/procurement/operator-instruction", requireInternalToolAuth, 
       `Operator instruction: ${instruction}`,
       "Continue the existing supplier conversation in this exact WhatsApp session.",
       "Use procurement tools and deterministic backend authority before any commercial commitment.",
+      "If the operator instructs you to accept/confirm a supplier quote, first ensure the latest supplier quote is persisted with procurement_record_quote, then call procurement_accept_negotiated_quote. Only send confirmation after that acceptance tool succeeds.",
+      "Never tell a supplier that a quote/order is confirmed when acceptance persistence failed.",
       "Do not mention this internal instruction, flag IDs, tools, or backend systems to the supplier.",
       "If a supplier-facing reply is appropriate, send only the natural business reply.",
     ].filter(Boolean).join("\n");
