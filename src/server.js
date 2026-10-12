@@ -806,6 +806,113 @@ app.post("/internal/whatsapp/send", requireInternalToolAuth, async (req, res) =>
   }
 });
 
+app.post("/internal/procurement/reminder", requireInternalToolAuth, async (req, res) => {
+  try {
+    const target = normalizeWhatsAppNumber(req.body?.phone_number);
+    const rfqId = String(req.body?.rfq_id || "").trim();
+    const productName = String(req.body?.product_name || "").trim();
+    const reminderStage = String(req.body?.reminder_stage || "").trim();
+    const reminderText = String(req.body?.suggested_message || "").trim();
+
+    if (!rfqId) {
+      return res.status(400).json({ ok: false, error: "rfq_id is required" });
+    }
+
+    const ready = await ensureGatewayRunning();
+    if (!ready?.ok) {
+      return res.status(503).json({ ok: false, error: "OpenClaw Gateway is not ready" });
+    }
+
+    const sessionKey = `agent:main:whatsapp:direct:${target}`;
+    const prompt = [
+      "[INTERNAL PROCUREMENT REMINDER CHECK]",
+      "This is a scheduler event, not a supplier message.",
+      `RFQ ID: ${rfqId}`,
+      productName ? `Product: ${productName}` : null,
+      reminderStage ? `Reminder stage: ${reminderStage}` : null,
+      reminderText ? `Suggested wording: ${reminderText}` : null,
+      "First use procurement_get_supplier_context for the supplier in this session.",
+      "Do NOT send a reminder if the supplier already answered this RFQ, said unavailable/no-stock, the RFQ is no longer active, or the current conversation makes a reminder redundant.",
+      "If no supplier-facing reminder should be sent, reply exactly NO_REPLY.",
+      "If a reminder is appropriate, return only one concise natural WhatsApp message. Do not mention scheduler, tools, RFQ IDs, or internal systems.",
+    ].filter(Boolean).join("\n");
+
+    const agentResult = await runCmd(
+      OPENCLAW_NODE,
+      clawArgs([
+        "agent",
+        "--session-key",
+        sessionKey,
+        "--message",
+        prompt,
+        "--json",
+      ]),
+    );
+
+    const clean = stripAnsi(agentResult.output || "").trim();
+    const agentPayload = parseTrailingJson(clean);
+    if (agentResult.code !== 0 || agentPayload?.ok === false || agentPayload?.status === "error") {
+      const error = agentPayload?.error?.message || agentPayload?.error || clean || `openclaw agent exited with code ${agentResult.code}`;
+      log.error("procurement-reminder", `agent check failed target=${target}: ${String(error).slice(0, 500)}`);
+      return res.status(502).json({ ok: false, error: String(error).slice(0, 1000) });
+    }
+
+    const reply =
+      agentPayload?.payloads?.map((p) => p?.text).filter(Boolean).join("\n").trim() ||
+      agentPayload?.final?.trim() ||
+      "";
+
+    if (!reply || /^NO_REPLY[.!]?$/i.test(reply)) {
+      log.info("procurement-reminder", `suppressed target=${target} rfq=${rfqId} stage=${reminderStage || "unknown"}`);
+      return res.json({
+        ok: true,
+        sent: false,
+        suppressed: true,
+        phone_number: target,
+        session_key: sessionKey,
+      });
+    }
+
+    const sendResult = await runCmd(
+      OPENCLAW_NODE,
+      clawArgs([
+        "message",
+        "send",
+        "--channel",
+        "whatsapp",
+        "--target",
+        target,
+        "--message",
+        reply,
+        "--json",
+      ]),
+    );
+    const sendClean = stripAnsi(sendResult.output || "").trim();
+    const sendPayload = parseTrailingJson(sendClean);
+    if (sendResult.code !== 0 || sendPayload?.ok === false) {
+      const error = sendPayload?.error || sendClean || `openclaw message send exited with code ${sendResult.code}`;
+      log.error("procurement-reminder", `send failed target=${target}: ${String(error).slice(0, 500)}`);
+      return res.status(502).json({ ok: false, error: String(error).slice(0, 1000) });
+    }
+
+    const messageId = extractPlatformMessageId(sendPayload);
+    log.info("procurement-reminder", `sent target=${target} rfq=${rfqId} stage=${reminderStage || "unknown"} messageId=${messageId || "unknown"}`);
+    return res.json({
+      ok: true,
+      sent: true,
+      suppressed: false,
+      phone_number: target,
+      session_key: sessionKey,
+      message: reply,
+      message_id: messageId,
+      result: sendPayload,
+    });
+  } catch (err) {
+    log.error("procurement-reminder", err?.message || String(err));
+    return res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 app.post("/internal/procurement/operator-instruction", requireInternalToolAuth, async (req, res) => {
   try {
     const target = normalizeWhatsAppNumber(req.body?.phone_number);
