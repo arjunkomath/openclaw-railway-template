@@ -227,68 +227,54 @@ function isConfigured() {
   }
 }
 
+function updateGatewayConfig(mutator) {
+  const p = configPath();
+  if (!fs.existsSync(p)) {
+    throw new Error("OpenClaw config file is not available");
+  }
+  const config = JSON.parse(fs.readFileSync(p, "utf8"));
+  const changed = mutator(config);
+  if (!changed) return false;
+
+  const tmp = `${p}.tmp-gateway-${process.pid}-${Date.now()}`;
+  fs.writeFileSync(tmp, JSON.stringify(config, null, 2) + "\n", {
+    encoding: "utf8",
+    mode: 0o600,
+  });
+  fs.renameSync(tmp, p);
+  return true;
+}
+
 async function syncAllowedOrigins() {
   const publicDomain = process.env.RAILWAY_PUBLIC_DOMAIN;
   if (!publicDomain) return;
-
   const origin = `https://${publicDomain}`;
 
-  const current = await runCmd(
-    OPENCLAW_NODE,
-    clawArgs(["config", "get", "gateway.controlUi.allowedOrigins"]),
-  );
-  if (current.code === 0 && current.output.includes(origin)) {
-    return;
-  }
-
-  const result = await runCmd(
-    OPENCLAW_NODE,
-    clawArgs([
-      "config",
-      "set",
-      "--json",
-      "gateway.controlUi.allowedOrigins",
-      JSON.stringify([origin]),
-    ]),
-  );
-  if (result.code === 0) {
-    log.info("gateway", `set allowedOrigins to [${origin}]`);
-  } else {
-    log.warn("gateway", `failed to set allowedOrigins (exit=${result.code})`);
-  }
+  const changed = updateGatewayConfig((config) => {
+    config.gateway = config.gateway || {};
+    config.gateway.controlUi = config.gateway.controlUi || {};
+    const current = Array.isArray(config.gateway.controlUi.allowedOrigins)
+      ? config.gateway.controlUi.allowedOrigins.map(String)
+      : [];
+    if (current.includes(origin)) return false;
+    config.gateway.controlUi.allowedOrigins = [...new Set([...current, origin])];
+    return true;
+  });
+  if (changed) log.info("gateway", `persisted allowedOrigins including ${origin}`);
 }
 
 async function syncTrustedProxies() {
   const expected = ["127.0.0.1", "::1"];
-  const current = await runCmd(
-    OPENCLAW_NODE,
-    clawArgs(["config", "get", "gateway.trustedProxies"]),
-  );
-
-  try {
-    if (
-      current.code === 0 &&
-      JSON.stringify(JSON.parse(stripAnsi(current.output).trim())) ===
-        JSON.stringify(expected)
-    ) {
-      return;
-    }
-  } catch {}
-
-  const result = await runCmd(
-    OPENCLAW_NODE,
-    clawArgs([
-      "config",
-      "set",
-      "--json",
-      "gateway.trustedProxies",
-      JSON.stringify(expected),
-    ]),
-  );
-  if (result.code !== 0) {
-    throw new Error(`Failed to set gateway.trustedProxies (exit=${result.code})`);
-  }
-  log.info("gateway", `set trustedProxies to ${JSON.stringify(expected)}`);
+  const changed = updateGatewayConfig((config) => {
+    config.gateway = config.gateway || {};
+    const current = Array.isArray(config.gateway.trustedProxies)
+      ? config.gateway.trustedProxies.map(String)
+      : [];
+    if (JSON.stringify(current) === JSON.stringify(expected)) return false;
+    config.gateway.trustedProxies = expected;
+    return true;
+  });
+  if (changed) log.info("gateway", `persisted trustedProxies ${JSON.stringify(expected)}`);
 }
 
 let gatewayProc = null;
