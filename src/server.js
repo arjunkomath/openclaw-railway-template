@@ -2290,8 +2290,9 @@ function ensureProcurementRuntimeConfig() {
     config.gateway.mode = "local";
     changed = true;
   }
-  if (Object.prototype.hasOwnProperty.call(config.gateway, "trustedProxies")) {
-    delete config.gateway.trustedProxies;
+  const expectedTrustedProxies = ["127.0.0.1"];
+  if (JSON.stringify(config.gateway.trustedProxies || []) !== JSON.stringify(expectedTrustedProxies)) {
+    config.gateway.trustedProxies = expectedTrustedProxies;
     changed = true;
   }
 
@@ -2452,6 +2453,15 @@ async function gracefulShutdown(signal) {
 
   process.exit(0);
 }
+
+process.on("uncaughtException", (err) => {
+  if (err?.code === "EPIPE" || err?.code === "ECONNRESET") {
+    log.warn("wrapper", `ignored disconnected proxy socket error: ${err.code}`);
+    return;
+  }
+  log.error("wrapper", `uncaught exception: ${err?.stack || err}`);
+  process.exit(1);
+});
 
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
