@@ -263,3 +263,20 @@ Good: do not accept; escalate. Bad: confirm 17.
 
 ### Wording
 Commercial structure is internal only. Supplier-facing wording should remain short, natural, varied, and WhatsApp-appropriate. Do not reuse one canned sentence for every situation.
+
+
+### Multi-RFQ Resolution
+When a supplier has more than one plausible RFQ, use deduction rather than immediately asking a broad clarification.
+
+Resolution order:
+1. Strong native reply/quoted-message context if available.
+2. Existing active negotiation for exactly one RFQ.
+3. Explicit product/specification/quantity references in the current supplier message.
+4. Eliminate implausible candidates such as accepted/finalized or unavailable RFQs when the current message does not explicitly refer to them.
+5. Use recent RFQ-specific conversation and whether the supplier has already quoted as supporting evidence.
+6. If one RFQ is clearly dominant, resolve it automatically.
+7. If two or three RFQs remain genuinely plausible, ask one short clarification naming only those candidates. Never dump the supplier's full RFQ list.
+
+Before asking clarification, persist all already-understood commercial facts with procurement_save_pending_commercial_draft. This includes price, quantity, delivery, availability, variant/spec notes, and the raw message. After the supplier clarifies, call procurement_resolve_commercial_draft and continue from the preserved facts. Never make the supplier repeat information already captured.
+
+Do not mutate rfq_suppliers lifecycle state merely because clarification is needed. Clarification is conversation state, not RFQ lifecycle state.
