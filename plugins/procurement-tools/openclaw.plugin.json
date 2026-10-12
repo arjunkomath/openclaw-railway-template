@@ -1,7 +1,7 @@
 {
   "id": "procurement-tools",
   "name": "MUAI Procurement Tools",
-  "description": "Authenticated procurement tools for supplier activation, LLM-led negotiation, commercial guard review, human escalation, quote persistence, and message logging.",
+  "description": "Authenticated procurement tools for activation, multi-RFQ resolution, durable clarification drafts, LLM-led negotiation, hard-guard review, human escalation, quote persistence, and message logging.",
   "version": "0.1.0",
   "configSchema": {
     "type": "object",
@@ -14,6 +14,9 @@
   "contracts": {
     "tools": [
       "procurement_get_supplier_context",
+      "procurement_resolve_commercial_draft",
+      "procurement_save_pending_commercial_draft",
+      "procurement_resolve_rfq_context",
       "procurement_get_negotiation_context",
       "procurement_record_quote",
       "procurement_mark_unavailable",
