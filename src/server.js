@@ -271,6 +271,7 @@ async function syncTrustedProxies() {
 
 let gatewayProc = null;
 let gatewayStarting = null;
+let gatewayBootPreparation = null;
 let shuttingDown = false;
 let gatewayRestartCount = 0;
 let gatewayLastStartTime = 0;
@@ -461,6 +462,12 @@ async function startGateway() {
 
 async function ensureGatewayRunning() {
   if (!isConfigured()) return { ok: false, reason: "not configured" };
+
+  // During container boot, doctor/config repair owns the persistent state.
+  // Wait for it before any HTTP/WebSocket request is allowed to start Gateway.
+  if (gatewayBootPreparation) {
+    await gatewayBootPreparation;
+  }
   if (gatewayProc) return { ok: true };
   const probe = await probeGatewayOnce();
   if (probe.ok) {
@@ -2380,7 +2387,7 @@ const server = app.listen(PORT, () => {
   void probeDeviceBootstrapSdk();
 
   if (isConfigured()) {
-    (async () => {
+    gatewayBootPreparation = (async () => {
       try {
         ensureProcurementRuntimeConfig();
       } catch (err) {
@@ -2391,8 +2398,19 @@ const server = app.listen(PORT, () => {
         const dr = await runCmd(OPENCLAW_NODE, clawArgs(["doctor", "--fix"]));
         log.info("wrapper", `doctor --fix exit=${dr.code}`);
         if (dr.output) log.info("wrapper", dr.output);
+        if (dr.code !== 0) {
+          throw new Error(`openclaw doctor --fix exited ${dr.code}`);
+        }
       } catch (err) {
         log.warn("wrapper", `doctor --fix failed: ${err.message}`);
+      }
+    })();
+
+    (async () => {
+      try {
+        await gatewayBootPreparation;
+      } finally {
+        gatewayBootPreparation = null;
       }
       await ensureGatewayRunning();
     })().catch((err) => {
