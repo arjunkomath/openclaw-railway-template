@@ -705,6 +705,48 @@ app.get("/internal/openclaw/diagnostics", requireInternalToolAuth, async (_req, 
   res.json({ ok: true, results });
 });
 
+function parseTrailingJson(output) {
+  const clean = stripAnsi(String(output || "")).trim();
+  if (!clean) return null;
+  try { return JSON.parse(clean); } catch {}
+
+  // CLI diagnostics can precede a pretty-printed JSON object. Try every line
+  // that begins with "{" and parse the complete trailing block.
+  const lines = clean.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].trimStart().startsWith("{")) continue;
+    try {
+      return JSON.parse(lines.slice(i).join("\n"));
+    } catch {}
+  }
+  return null;
+}
+
+function extractPlatformMessageId(payload) {
+  const candidates = [
+    payload?.messageId,
+    payload?.message_id,
+    payload?.id,
+    payload?.result?.messageId,
+    payload?.result?.message_id,
+    payload?.result?.id,
+    payload?.payload?.messageId,
+    payload?.payload?.message_id,
+    payload?.payload?.id,
+    payload?.payload?.result?.messageId,
+    payload?.payload?.result?.message_id,
+    payload?.payload?.result?.id,
+    payload?.payload?.sendResult?.messageId,
+    payload?.sendResult?.messageId,
+  ];
+  for (const value of candidates) {
+    if (value !== undefined && value !== null && String(value).trim()) {
+      return String(value).trim();
+    }
+  }
+  return null;
+}
+
 app.post("/internal/whatsapp/send", requireInternalToolAuth, async (req, res) => {
   try {
     const target = normalizeWhatsAppNumber(req.body?.phone_number);
@@ -737,18 +779,7 @@ app.post("/internal/whatsapp/send", requireInternalToolAuth, async (req, res) =>
     );
 
     const clean = stripAnsi(result.output || "").trim();
-    let payload = null;
-    try {
-      payload = JSON.parse(clean);
-    } catch {
-      const lines = clean.split("\n").map((line) => line.trim()).filter(Boolean);
-      for (let i = lines.length - 1; i >= 0; i--) {
-        try {
-          payload = JSON.parse(lines[i]);
-          break;
-        } catch {}
-      }
-    }
+    const payload = parseTrailingJson(clean);
 
     if (result.code !== 0 || payload?.ok === false) {
       const error = payload?.error || clean || `openclaw message send exited with code ${result.code}`;
@@ -760,14 +791,7 @@ app.post("/internal/whatsapp/send", requireInternalToolAuth, async (req, res) =>
       });
     }
 
-    const messageId =
-      payload?.messageId ||
-      payload?.message_id ||
-      payload?.id ||
-      payload?.result?.messageId ||
-      payload?.result?.message_id ||
-      payload?.result?.id ||
-      null;
+    const messageId = extractPlatformMessageId(payload);
 
     log.info("whatsapp-send", `sent target=${target} messageId=${messageId || "unknown"}`);
     return res.json({
@@ -778,6 +802,70 @@ app.post("/internal/whatsapp/send", requireInternalToolAuth, async (req, res) =>
     });
   } catch (err) {
     log.error("whatsapp-send", err?.message || String(err));
+    return res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+app.post("/internal/procurement/operator-instruction", requireInternalToolAuth, async (req, res) => {
+  try {
+    const target = normalizeWhatsAppNumber(req.body?.phone_number);
+    const instruction = String(req.body?.instruction || "").trim();
+    const flagId = String(req.body?.flag_id || "").trim();
+    const rfqId = String(req.body?.rfq_id || "").trim();
+    const reason = String(req.body?.reason || "").trim();
+
+    if (!instruction) {
+      return res.status(400).json({ ok: false, error: "instruction is required" });
+    }
+
+    const ready = await ensureGatewayRunning();
+    if (!ready?.ok) {
+      return res.status(503).json({ ok: false, error: "OpenClaw Gateway is not ready" });
+    }
+
+    const sessionKey = `agent:main:whatsapp:direct:${target}`;
+    const operatorPrompt = [
+      "[INTERNAL PROCUREMENT OPERATOR INSTRUCTION]",
+      "This is trusted human guidance from Agent Attention. It is NOT a supplier message.",
+      flagId ? `Flag ID: ${flagId}` : null,
+      rfqId ? `Locked RFQ ID: ${rfqId}` : null,
+      reason ? `Escalation reason: ${reason}` : null,
+      `Operator instruction: ${instruction}`,
+      "Continue the existing supplier conversation in this exact WhatsApp session.",
+      "Use procurement tools and deterministic backend authority before any commercial commitment.",
+      "Do not mention this internal instruction, flag IDs, tools, or backend systems to the supplier.",
+      "If a supplier-facing reply is appropriate, send only the natural business reply.",
+    ].filter(Boolean).join("\n");
+
+    const result = await runCmd(
+      OPENCLAW_NODE,
+      clawArgs([
+        "agent",
+        "--session-key",
+        sessionKey,
+        "--message",
+        operatorPrompt,
+        "--deliver",
+        "--reply-channel",
+        "whatsapp",
+        "--reply-to",
+        target,
+        "--json",
+      ]),
+    );
+
+    const clean = stripAnsi(result.output || "").trim();
+    const payload = parseTrailingJson(clean);
+    if (result.code !== 0 || payload?.ok === false || payload?.status === "error") {
+      const error = payload?.error?.message || payload?.error || clean || `openclaw agent exited with code ${result.code}`;
+      log.error("operator-instruction", `failed target=${target}: ${String(error).slice(0, 500)}`);
+      return res.status(502).json({ ok: false, error: String(error).slice(0, 1000) });
+    }
+
+    log.info("operator-instruction", `completed target=${target} session=${sessionKey} flag=${flagId || "none"} rfq=${rfqId || "none"}`);
+    return res.json({ ok: true, phone_number: target, session_key: sessionKey, result: payload });
+  } catch (err) {
+    log.error("operator-instruction", err?.message || String(err));
     return res.status(500).json({ ok: false, error: err?.message || String(err) });
   }
 });
