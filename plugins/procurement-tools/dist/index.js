@@ -32,6 +32,39 @@ async function post(path, payload, signal) {
 const Id = Type.String();
 const OptionalString = Type.Optional(Type.String());
 
+function normalizeSenderPhone(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const digits = raw.replace(/\D/g, "");
+  return digits ? `+${digits}` : "";
+}
+
+function activationGuidance(gate) {
+  if (gate?.has_procurement_state) {
+    return [
+      "[MUAI PROCUREMENT ACTIVATION]",
+      "This supplier currently has live procurement state.",
+      `Active RFQs: ${gate.active_rfq_count || 0}`,
+      `Active negotiation: ${gate.active_negotiation ? "yes" : "no"}`,
+      `Pending clarification: ${gate.pending_clarification ? "yes" : "no"}`,
+      `Pending human attention: ${gate.pending_human_attention ? "yes" : "no"}`,
+      "Treat the current message in the context of the supplier's real procurement state.",
+      "For any commercial action, use the Phase 2 commercial review loop before sending.",
+    ].join("\n");
+  }
+
+  return [
+    "[MUAI NO ACTIVE PROCUREMENT CONTEXT]",
+    "There is currently no active RFQ, negotiation, pending clarification, or pending human-attention workflow for this supplier.",
+    "Do NOT invent an RFQ, price discussion, order, product, or procurement context.",
+    "Classify the current message by meaning:",
+    "- Clearly casual/personal/social: usually return NO_REPLY. A brief natural casual reply is allowed only when it genuinely fits the conversation.",
+    "- Clearly business/procurement-related despite no active RFQ: you may send one short context-appropriate acknowledgement, then create Human Attention internally. Do not start negotiation or invent an RFQ.",
+    "- Ambiguous/unclear: prefer NO_REPLY and create Human Attention internally. Do not guess.",
+    "Never tell the supplier that a human escalation/Agent Attention was created.",
+  ].join("\n");
+}
+
 const plugin = defineToolPlugin({
   id: "procurement-tools",
   name: "MUAI Procurement Tools",
@@ -54,6 +87,47 @@ const plugin = defineToolPlugin({
           supplier_id: p.supplier_id,
           phone_number: p.phone_number,
           history_limit: p.history_limit ?? 20
+        }, ctx?.signal);
+      }
+    }),
+    tool({
+      name: "procurement_get_negotiation_context",
+      label: "Get Negotiation Context",
+      description: "Read the hard commercial facts for an RFQ: buyer targets/limits, supplier quote history, active negotiation state, and authorized trade-off constraints. In Phase 2 YOU choose the negotiation strategy and counter; this tool does not choose it for you.",
+      parameters: Type.Object({
+        supplier_id: Id,
+        rfq_id: Id
+      }, { additionalProperties: false }),
+      execute: (p, _c, ctx) => {
+        const { clientId } = cfg();
+        return post("/openclaw/negotiation-context", {
+          ...p,
+          client_id: clientId
+        }, ctx?.signal);
+      }
+    }),
+    tool({
+      name: "procurement_review_commercial_action",
+      label: "Review Commercial Action",
+      description: "Submit your proposed commercial action to the minimal hard guard before sending it to the supplier. The guard does NOT choose strategy or wording. It returns APPROVE, ADJUST, RETRY, ESCALATE, or REJECT. On ADJUST/RETRY, reconsider and call once more with attempt_number=2. Never send a commercial commitment before APPROVE.",
+      parameters: Type.Object({
+        supplier_id: Id,
+        rfq_id: Type.Optional(Id),
+        quote_id: Type.Optional(Id),
+        action_type: Type.String(),
+        attempt_number: Type.Integer({ minimum: 1, maximum: 2 }),
+        proposal: Type.Record(Type.String(), Type.Unknown()),
+        assessment: Type.Optional(Type.Record(Type.String(), Type.Unknown()))
+      }, { additionalProperties: false }),
+      execute: (p, _c, ctx) => {
+        const { clientId } = cfg();
+        return post("/openclaw/review-commercial-action", {
+          ...p,
+          client_id: clientId,
+          session_key: ctx?.memoryAudience?.kind === "conversation"
+            ? ctx.memoryAudience.sessionKey
+            : null,
+          assessment: p.assessment ?? {}
         }, ctx?.signal);
       }
     }),
@@ -105,7 +179,7 @@ const plugin = defineToolPlugin({
     tool({
       name: "procurement_get_negotiation_decision",
       label: "Get Negotiation Decision",
-      description: "Ask the deterministic backend whether to counter, stop, or require human review. Never invent or alter the returned counter price.",
+      description: "Legacy deterministic negotiation tool retained for rollback/testing. Phase 2 default: do NOT use this tool to choose counters. Use procurement_get_negotiation_context, propose your own strategy/counter, then procurement_review_commercial_action.",
       parameters: Type.Object({
         supplier_id: Id,
         rfq_id: Id,
@@ -207,6 +281,70 @@ function looksLikeInternalProviderError(content) {
 const registerProcurementTools = plugin.register.bind(plugin);
 plugin.register = (api) => {
   registerProcurementTools(api);
+
+  api.on("before_prompt_build", async (event, context) => {
+    const channel = String(context?.channel || context?.channelId || "").toLowerCase();
+    if (channel !== "whatsapp") return undefined;
+
+    const phone = normalizeSenderPhone(context?.senderId || context?.senderExternalId || context?.chatId);
+    if (!phone) {
+      return {
+        appendContext: [
+          "[MUAI ACTIVATION WARNING]",
+          "The WhatsApp sender identity could not be resolved for this turn.",
+          "Do not make a commercial commitment. If context is unclear, return NO_REPLY."
+        ].join("\n")
+      };
+    }
+
+    try {
+      const { clientId } = cfg();
+      const gate = await post("/openclaw/activation-gate", {
+        client_id: clientId,
+        phone_number: phone,
+        message: String(event?.currentUserMessage || event?.prompt || "")
+      });
+
+      const procurementTools = [
+        "procurement_get_supplier_context",
+        "procurement_get_negotiation_context",
+        "procurement_record_quote",
+        "procurement_mark_unavailable",
+        "procurement_review_commercial_action",
+        "procurement_request_human_attention",
+        "procurement_accept_negotiated_quote",
+        "procurement_log_message"
+      ];
+
+      if (!gate?.has_procurement_state) {
+        return {
+          appendContext: activationGuidance(gate),
+          toolsAllow: [
+            "procurement_request_human_attention",
+            "procurement_log_message"
+          ]
+        };
+      }
+
+      return {
+        appendContext: activationGuidance(gate),
+        toolsAllow: procurementTools
+      };
+    } catch (err) {
+      api.logger?.warn?.(
+        `[procurement-activation] activation lookup failed: ${err?.message || err}`
+      );
+      return {
+        appendContext: [
+          "[MUAI ACTIVATION FAIL-SAFE]",
+          "Procurement activation state could not be verified.",
+          "Do not guess or make a commercial commitment.",
+          "Prefer NO_REPLY unless a brief context-appropriate holding response is clearly necessary."
+        ].join("\n"),
+        toolsAllow: ["procurement_request_human_attention", "procurement_log_message"]
+      };
+    }
+  });
 
   // Supplier-safety boundary: internal model/provider failures are operational
   // data, never supplier-facing WhatsApp content.
