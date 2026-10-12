@@ -1,0 +1,26 @@
+name: Phase 2 OpenClaw procurement integration
+on:
+  push:
+    branches:
+      - feat/phase2-multiitem-revisions-20261012
+  pull_request:
+    paths:
+      - 'AGENT.md'
+      - 'plugins/procurement-tools/**'
+      - '.github/workflows/phase2-procurement-tools.yml'
+jobs:
+  validate-plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+      - name: Parse procurement JavaScript
+        run: node --check plugins/procurement-tools/dist/index.js
+      - name: Parse procurement plugin contract
+        run: node -e 'const fs=require("fs");JSON.parse(fs.readFileSync("plugins/procurement-tools/openclaw.plugin.json","utf8"))'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run OpenClaw wrapper tests
+        run: npm test

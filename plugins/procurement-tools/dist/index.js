@@ -94,6 +94,8 @@ function activationGuidance(gate) {
       `Pending human attention: ${gate.pending_human_attention ? "yes" : "no"}`,
       "Treat the current message in the context of the supplier's real procurement state.",
       "When multiple RFQs may match, do not list all active RFQs and do not guess. First call procurement_resolve_rfq_context.",
+      "If one supplier message contains itemized quotes for TWO OR MORE products, FIRST log the inbound WhatsApp message to obtain a persisted message_log UUID; then call procurement_process_multi_item_message on the FULL message. Pass native reply_to_message_id whenever available to scope item numbers to the exact quoted outbound bundle. When status MULTI_RFQ_RECORDED, the backend already persisted every mapped item atomically; never record them a second time. If clarification is required, the backend has preserved both resolved and unresolved line facts in a draft. Ask only about ambiguous lines; never assign by message order alone.",
+      "If a supplier withdraws or changes an already accepted quote, first record the newly stated quote, then call procurement_mark_quote_revision with the exact new quote ID. Keep the old accepted price historically, but never represent it as currently valid while revision_pending.",
       "Strong context wins: native WhatsApp reply/quote context, an existing active negotiation, or an explicit product/spec reference.",
       "If the resolver returns AMBIGUOUS, persist any already-understood commercial terms with procurement_save_pending_commercial_draft, then ask one short clarification naming only the remaining 2-3 candidates.",
       "When the supplier clarifies, resolve that draft with procurement_resolve_commercial_draft and continue using the preserved facts; never ask them to repeat price/delivery/quantity already captured.",
@@ -165,13 +167,82 @@ const plugin = defineToolPlugin({
       }
     }),
     tool({
+      name: "procurement_process_multi_item_message",
+      label: "Safely Process Full Multi-Item Supplier Message",
+      description: "Preferred tool when supplier provides prices for multiple RFQs. Validates the ENTIRE message, atomically records all mapped RFQs, or durably saves uncertain facts and returns one targeted clarification. Requires the previously logged inbound message UUID.",
+      parameters: Type.Object({
+        supplier_id: Id,
+        message: Type.String({ minLength: 1 }),
+        source_message_id: Id,
+        reply_to_message_id: OptionalString
+      }, { additionalProperties: false }),
+      execute: (p, _c, ctx) => {
+        const { clientId } = cfg();
+        return post("/openclaw/process-multi-item-message", { ...p, client_id: clientId }, ctx?.signal);
+      }
+    }),
+    tool({
+      name: "procurement_parse_multi_item_quotes",
+      label: "Parse Multi-Item Supplier Price List",
+      description: "Parse one WhatsApp message that prices multiple RFQs. Maps each priced line only to authorized supplier RFQs, returning CLARIFICATION_REQUIRED on ambiguity. Does NOT save any quotes.",
+      parameters: Type.Object({
+        supplier_id: Id,
+        message: Type.String({ minLength: 1 }),
+        source_message_id: OptionalString,
+        reply_to_message_id: OptionalString
+      }, { additionalProperties: false }),
+      execute: (p, _c, ctx) => {
+        const { clientId } = cfg();
+        return post("/openclaw/parse-multi-item-quotes", { ...p, client_id: clientId }, ctx?.signal);
+      }
+    }),
+    tool({
+      name: "procurement_record_multi_item_quotes",
+      label: "Record Mapped Multi-Item Quotes",
+      description: "Persist an entire validated multi-RFQ supplier price list, using the original persisted inbound message UUID for retry deduplication. Use only after procurement_parse_multi_item_quotes returns MAPPED.",
+      parameters: Type.Object({
+        supplier_id: Id,
+        source_message_id: Id,
+        raw_message: Type.String({ minLength: 1 }),
+        items: Type.Array(Type.Object({
+          candidate_rfq_id: Id,
+          product_reference: OptionalString,
+          supplier_final: Type.Optional(Type.Boolean()),
+          confidence: Type.Number({ minimum: 0, maximum: 1 }),
+          price: Type.Number({ exclusiveMinimum: 0 }),
+          quantity: Type.Optional(Type.Integer({ minimum: 1 })),
+          variant_label: OptionalString,
+          delivery_time: OptionalString,
+          quality_notes: OptionalString
+        }, { additionalProperties: false }), { minItems: 2, maxItems: 100 })
+      }, { additionalProperties: false }),
+      execute: (p, _c, ctx) => {
+        const { clientId } = cfg();
+        return post("/openclaw/record-multi-item-quotes", { ...p, client_id: clientId }, ctx?.signal);
+      }
+    }),
+    tool({
+      name: "procurement_mark_quote_revision",
+      label: "Mark Previously Accepted Quote Revised",
+      description: "Option B: ONLY when a supplier explicitly changes/withdraws a previously accepted offer, pass the newly recorded quote ID to invalidate the current accepted deal, retain historical acceptance and enter revision_pending. Do NOT use for an ordinary new quote.",
+      parameters: Type.Object({
+        supplier_id: Id,
+        rfq_id: Id,
+        new_quote_id: Id
+      }, { additionalProperties: false }),
+      execute: (p, _c, ctx) => {
+        const { clientId } = cfg();
+        return post("/openclaw/mark-quote-revision", { ...p, client_id: clientId }, ctx?.signal);
+      }
+    }),
+    tool({
       name: "procurement_save_pending_commercial_draft",
       label: "Save Pending Commercial Draft",
       description: "Persist price, quantity, delivery, availability, or other extracted supplier terms before asking an RFQ clarification. Use whenever the commercial facts are understood but the exact RFQ is still ambiguous, so no detail is lost across clarification turns.",
       parameters: Type.Object({
         supplier_id: Id,
         raw_message: Type.String(),
-        candidate_rfq_ids: Type.Array(Id, { maxItems: 3 }),
+        candidate_rfq_ids: Type.Array(Id, { maxItems: 8 }),
         extracted_facts: Type.Record(Type.String(), Type.Unknown()),
         source_message_id: OptionalString,
         reply_to_message_id: OptionalString,
@@ -336,10 +407,11 @@ const plugin = defineToolPlugin({
     tool({
       name: "procurement_accept_negotiated_quote",
       label: "Accept Negotiated Quote",
-      description: "Persist acceptance of a supplier quote. Use this before telling the supplier an order/quote is confirmed. After the RFQ deadline, acceptance is allowed only when the backend confirms an existing in-flight negotiation for this supplier/RFQ.",
+      description: "Persist acceptance of an exact supplier quote after hard commercial approval. When revision_pending, the explicit pending revised quote_id is REQUIRED. Do not confirm acceptance before this succeeds.",
       parameters: Type.Object({
         supplier_id: Id,
         rfq_id: Id,
+        quote_id: Type.Optional(Id),
         price: Type.Optional(Type.Number({ exclusiveMinimum: 0 })),
         quantity: Type.Optional(Type.Integer({ minimum: 1 }))
       }, { additionalProperties: false }),
@@ -424,6 +496,10 @@ plugin.register = (api) => {
       const procurementTools = [
         "procurement_get_supplier_context",
         "procurement_resolve_rfq_context",
+        "procurement_process_multi_item_message",
+        "procurement_parse_multi_item_quotes",
+        "procurement_record_multi_item_quotes",
+        "procurement_mark_quote_revision",
         "procurement_save_pending_commercial_draft",
         "procurement_resolve_commercial_draft",
         "procurement_get_negotiation_context",

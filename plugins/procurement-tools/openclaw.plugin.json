@@ -13,6 +13,7 @@
   },
   "contracts": {
     "tools": [
+      "procurement_process_multi_item_message",
       "procurement_get_supplier_context",
       "procurement_resolve_commercial_draft",
       "procurement_save_pending_commercial_draft",
@@ -24,7 +25,10 @@
       "procurement_review_commercial_action",
       "procurement_request_human_attention",
       "procurement_accept_negotiated_quote",
-      "procurement_log_message"
+      "procurement_log_message",
+      "procurement_parse_multi_item_quotes",
+      "procurement_record_multi_item_quotes",
+      "procurement_mark_quote_revision"
     ]
   }
 }
