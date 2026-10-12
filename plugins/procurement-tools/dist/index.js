@@ -618,8 +618,11 @@ plugin.register = (api) => {
       };
     }
 
-    if (looksCommercialSupplierReply(event?.content)) {
-      const sessionKey = String(context?.sessionKey || "");
+    // The LLM commercial guard is restricted to conversational WhatsApp agent
+    // sessions. Backend-originated RFQ invitations use the authenticated
+    // /internal/whatsapp/send route and must not require negotiation approval.
+    if (deliverySessionKey.includes(":whatsapp:direct:") && looksCommercialSupplierReply(event?.content)) {
+      const sessionKey = deliverySessionKey;
       if (!hasFreshCommercialApproval(sessionKey)) {
         api.logger?.error?.(
           "[commercial-authority] blocked unreviewed commercial WhatsApp reply"
