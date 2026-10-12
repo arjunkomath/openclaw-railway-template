@@ -39,6 +39,50 @@ function normalizeSenderPhone(value) {
   return digits ? `+${digits}` : "";
 }
 
+const approvedCommercialBySession = new Map();
+
+function sessionKeyFromToolContext(ctx) {
+  if (ctx?.memoryAudience?.kind === "conversation" && ctx.memoryAudience.sessionKey) {
+    return String(ctx.memoryAudience.sessionKey);
+  }
+  return "";
+}
+
+function rememberCommercialApproval(sessionKey, result) {
+  if (!sessionKey || result?.outcome !== "APPROVE") return;
+  approvedCommercialBySession.set(sessionKey, {
+    at: Date.now(),
+    actionType: result?.action_type || null
+  });
+}
+
+function hasFreshCommercialApproval(sessionKey) {
+  const entry = approvedCommercialBySession.get(String(sessionKey || ""));
+  if (!entry) return false;
+  if (Date.now() - entry.at > 120000) {
+    approvedCommercialBySession.delete(String(sessionKey || ""));
+    return false;
+  }
+  return true;
+}
+
+function consumeCommercialApproval(sessionKey) {
+  approvedCommercialBySession.delete(String(sessionKey || ""));
+}
+
+function looksCommercialSupplierReply(content) {
+  const text = String(content || "").trim();
+  if (!text) return false;
+  const patterns = [
+    /\bAED\b/i,
+    /\b(price|rate|quote|counter(?:offer)?|discount|per\s+(?:piece|unit))\b/i,
+    /\b(confirm(?:ed|ation)?|accept(?:ed|ance)?|award(?:ed)?|order\s+confirmed|deal)\b/i,
+    /\b(quantity|qty|pieces?|units?)\b[^\n]{0,30}\b\d+\b/i,
+    /\b(delivery|lead\s*time)\b[^\n]{0,30}\b\d+\s*(?:day|days|week|weeks)\b/i
+  ];
+  return patterns.some((p) => p.test(text));
+}
+
 function activationGuidance(gate) {
   if (gate?.has_procurement_state) {
     return [
@@ -50,6 +94,11 @@ function activationGuidance(gate) {
       `Pending human attention: ${gate.pending_human_attention ? "yes" : "no"}`,
       "Treat the current message in the context of the supplier's real procurement state.",
       "For any commercial action, use the Phase 2 commercial review loop before sending.",
+      "Phase 2 negotiation: persist the supplier quote first, read procurement_get_negotiation_context, then choose your OWN counter/strategy.",
+      "Judgment examples, not formulas: tiny supplier movement -> usually hold or move minimally; meaningful movement -> consider a controlled reciprocal concession; repeated refusal -> change tactic instead of repeating the exact same counter; favorable quote below target -> never negotiate upward; final above hard authority -> escalate.",
+      "Before sending any price/quantity/delivery/acceptance commitment, call procurement_review_commercial_action.",
+      "If review returns ADJUST or RETRY, reconsider and call it one more time with attempt_number=2. If still not approved, request Human Attention.",
+      "Supplier-facing wording must stay natural and varied; never expose internal targets, limits, guard feedback, tools, or structured assessment.",
     ].join("\n");
   }
 
@@ -119,16 +168,19 @@ const plugin = defineToolPlugin({
         proposal: Type.Record(Type.String(), Type.Unknown()),
         assessment: Type.Optional(Type.Record(Type.String(), Type.Unknown()))
       }, { additionalProperties: false }),
-      execute: (p, _c, ctx) => {
+      async execute(p, _c, ctx) {
         const { clientId } = cfg();
-        return post("/openclaw/review-commercial-action", {
+        const sessionKey = sessionKeyFromToolContext(ctx);
+        const result = await post("/openclaw/review-commercial-action", {
           ...p,
           client_id: clientId,
-          session_key: ctx?.memoryAudience?.kind === "conversation"
-            ? ctx.memoryAudience.sessionKey
-            : null,
+          session_key: sessionKey || null,
           assessment: p.assessment ?? {}
         }, ctx?.signal);
+        if (result?.outcome === "APPROVE") {
+          rememberCommercialApproval(sessionKey, { ...result, action_type: p.action_type });
+        }
+        return result;
       }
     }),
     tool({
@@ -346,20 +398,64 @@ plugin.register = (api) => {
     }
   });
 
+  api.on("before_agent_finalize", (event, context) => {
+    const channel = String(context?.channel || context?.channelId || "").toLowerCase();
+    if (channel !== "whatsapp") return undefined;
+
+    const finalText = String(event?.lastAssistantMessage || "").trim();
+    if (!looksCommercialSupplierReply(finalText)) return undefined;
+
+    const sessionKey = String(context?.sessionKey || "");
+    if (hasFreshCommercialApproval(sessionKey)) return undefined;
+
+    return {
+      action: "revise",
+      reason: "commercial_action_requires_backend_review",
+      retry: {
+        instruction: [
+          "Your proposed supplier reply contains a commercial action or commercial-state reference.",
+          "Before finalizing, persist any supplier quote if needed, read negotiation context, then call procurement_review_commercial_action.",
+          "If the guard returns APPROVE, produce a natural supplier-facing reply.",
+          "If ADJUST or RETRY, reconsider and submit one second proposal only.",
+          "If ESCALATE/REJECT, do not make the commitment; request Human Attention and use a brief holding reply only if context requires it."
+        ].join(" "),
+        idempotencyKey: `procurement-commercial-review:${sessionKey || event?.runId || "unknown"}`,
+        maxAttempts: 2
+      }
+    };
+  });
+
   // Supplier-safety boundary: internal model/provider failures are operational
   // data, never supplier-facing WhatsApp content.
   api.on("message_sending", (event, context) => {
     const channelId = String(context?.channelId || "").toLowerCase();
     if (channelId !== "whatsapp") return undefined;
-    if (!looksLikeInternalProviderError(event?.content)) return undefined;
 
-    api.logger?.error?.(
-      "[supplier-safety] suppressed internal provider/runtime error from WhatsApp delivery"
-    );
-    return {
-      cancel: true,
-      cancelReason: "supplier_safety_provider_error"
-    };
+    if (looksLikeInternalProviderError(event?.content)) {
+      api.logger?.error?.(
+        "[supplier-safety] suppressed internal provider/runtime error from WhatsApp delivery"
+      );
+      return {
+        cancel: true,
+        cancelReason: "supplier_safety_provider_error"
+      };
+    }
+
+    if (looksCommercialSupplierReply(event?.content)) {
+      const sessionKey = String(context?.sessionKey || "");
+      if (!hasFreshCommercialApproval(sessionKey)) {
+        api.logger?.error?.(
+          "[commercial-authority] blocked unreviewed commercial WhatsApp reply"
+        );
+        return {
+          cancel: true,
+          cancelReason: "commercial_action_not_reviewed"
+        };
+      }
+      consumeCommercialApproval(sessionKey);
+    }
+
+    return undefined;
   });
 
   api.on("message_sent", async (event, context) => {
