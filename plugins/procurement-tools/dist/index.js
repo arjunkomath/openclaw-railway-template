@@ -601,7 +601,9 @@ plugin.register = (api) => {
     const channelId = String(context?.channelId || "").toLowerCase();
     if (channelId !== "whatsapp") return undefined;
 
-    if (blockedForCurrentTurn(event?.to)) {
+    const deliverySessionKey = String(context?.sessionKey || "");
+    // Do not block independent scheduled/buyer-initiated outbound traffic.
+    if (deliverySessionKey.includes(":whatsapp:direct:") && blockedForCurrentTurn(event?.to)) {
       api.logger?.warn?.("[procurement-activation] suppressed unauthorized WhatsApp reply");
       return { cancel: true, cancelReason: "procurement_activation_denied" };
     }
