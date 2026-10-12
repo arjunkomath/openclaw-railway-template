@@ -144,6 +144,25 @@ const plugin = defineToolPlugin({
       }
     }),
     tool({
+      name: "procurement_accept_negotiated_quote",
+      label: "Accept Negotiated Quote",
+      description: "Persist acceptance of a supplier quote. Use this before telling the supplier an order/quote is confirmed. After the RFQ deadline, acceptance is allowed only when the backend confirms an existing in-flight negotiation for this supplier/RFQ.",
+      parameters: Type.Object({
+        supplier_id: Id,
+        rfq_id: Id,
+        price: Type.Optional(Type.Number({ exclusiveMinimum: 0 })),
+        quantity: Type.Optional(Type.Integer({ minimum: 1 }))
+      }, { additionalProperties: false }),
+      execute: (p, _c, ctx) => {
+        const { clientId } = cfg();
+        return post("/openclaw/accept-negotiated-quote", {
+          ...p,
+          client_id: clientId,
+          accepted_by: "openclaw"
+        }, ctx?.signal);
+      }
+    }),
+    tool({
       name: "procurement_log_message",
       label: "Log Supplier Message",
       description: "Log an inbound or outbound supplier message in the procurement backend. This tool does not send WhatsApp messages.",
@@ -203,6 +222,27 @@ plugin.register = (api) => {
       cancel: true,
       cancelReason: "supplier_safety_provider_error"
     };
+  });
+
+  api.on("message_sent", async (event, context) => {
+    const channelId = String(context?.channelId || "").toLowerCase();
+    if (channelId !== "whatsapp") return;
+
+    try {
+      const { clientId } = cfg();
+      await post("/openclaw/message-delivery", {
+        client_id: clientId,
+        phone_number: event?.to,
+        body: String(event?.content || ""),
+        success: Boolean(event?.success),
+        external_message_id: event?.messageId || null,
+        error: event?.error || null
+      });
+    } catch (err) {
+      api.logger?.warn?.(
+        `[procurement-delivery] failed to reconcile WhatsApp delivery: ${err?.message || err}`
+      );
+    }
   });
 };
 
