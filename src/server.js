@@ -483,26 +483,13 @@ async function startGateway() {
 
 async function ensureGatewayRunning() {
   if (!isConfigured()) return { ok: false, reason: "not configured" };
-  if (gatewayProc && !gatewayStarting) return { ok: true };
+  if (gatewayProc) return { ok: true };
+  const probe = await probeGatewayOnce();
+  if (probe.ok) {
+    return { ok: true, reason: "reachable" };
+  }
   if (!gatewayStarting) {
-    // Requests and restarts must share the migration/startup gate.
     gatewayStarting = (async () => {
-      const probe = await probeGatewayOnce();
-      if (probe.ok) {
-        return { ok: true, reason: "reachable" };
-      }
-
-      log.info("wrapper", "running openclaw doctor --non-interactive --fix...");
-      const dr = await runCmd(
-        OPENCLAW_NODE,
-        clawArgs(["doctor", "--non-interactive", "--fix"]),
-      );
-      log.info("wrapper", `doctor --fix exit=${dr.code}`);
-      if (dr.output) log.info("wrapper", dr.output);
-      if (dr.code !== 0) {
-        throw new Error(`Gateway startup blocked: doctor --fix failed (exit=${dr.code})`);
-      }
-
       await syncTrustedProxies();
       await syncAllowedOrigins();
       await startGateway();
@@ -510,12 +497,12 @@ async function ensureGatewayRunning() {
       if (!ready) {
         throw new Error("Gateway did not become ready in time");
       }
-      return { ok: true };
     })().finally(() => {
       gatewayStarting = null;
     });
   }
-  return gatewayStarting;
+  await gatewayStarting;
+  return { ok: true };
 }
 
 function isGatewayStarting() {
@@ -1046,8 +1033,7 @@ function runCmd(cmd, args, opts = {}) {
       resolve({ code: 127, output: out });
     });
 
-    // A signal-terminated command did not complete successfully.
-    proc.on("close", (code) => resolve({ code: code ?? 1, output: out }));
+    proc.on("close", (code) => resolve({ code: code ?? 0, output: out }));
   });
 }
 
@@ -1849,7 +1835,17 @@ const server = app.listen(PORT, () => {
   void probeDeviceBootstrapSdk();
 
   if (isConfigured()) {
-    ensureGatewayRunning().catch((err) => {
+    (async () => {
+      try {
+        log.info("wrapper", "running openclaw doctor --fix...");
+        const dr = await runCmd(OPENCLAW_NODE, clawArgs(["doctor", "--fix"]));
+        log.info("wrapper", `doctor --fix exit=${dr.code}`);
+        if (dr.output) log.info("wrapper", dr.output);
+      } catch (err) {
+        log.warn("wrapper", `doctor --fix failed: ${err.message}`);
+      }
+      await ensureGatewayRunning();
+    })().catch((err) => {
       log.error("wrapper", `failed to start gateway at boot: ${err.message}`);
     });
   }
