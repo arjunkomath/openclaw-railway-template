@@ -62,8 +62,27 @@ function mcpServers(env) {
   return patches;
 }
 
+// The image bakes Chromium in and sets CHROMIUM_PATH. Containers have no display
+// and no user namespaces, so the managed browser runs headless without the sandbox.
+// BROWSER_ENABLED=false turns the tool off.
+function browser(env) {
+  const executablePath = env.CHROMIUM_PATH?.trim();
+  if (!executablePath) return [];
+  const label = "Browser tool (headless Chromium)";
+  if (env.BROWSER_ENABLED?.trim().toLowerCase() === "false") {
+    return [{ label: "Browser tool (off)", path: "browser.enabled", value: false }];
+  }
+  return Object.entries({
+    enabled: true,
+    executablePath,
+    headless: true,
+    noSandbox: true,
+    defaultProfile: "openclaw",
+  }).map(([key, value]) => ({ label, path: `browser.${key}`, value }));
+}
+
 export function integrationPatches(env) {
-  return [...slackAccounts(env), ...mcpServers(env)];
+  return [...slackAccounts(env), ...mcpServers(env), ...browser(env)];
 }
 
 const WEB_SEARCH_KEYS = [
@@ -79,7 +98,7 @@ const WEB_SEARCH_KEYS = [
 export function integrationStatus(env) {
   const has = (name) => Boolean(env[name]?.trim());
   return {
-    configured: integrationPatches(env).map((p) => p.label),
+    configured: [...new Set(integrationPatches(env).map((p) => p.label))],
     webSearchKeys: WEB_SEARCH_KEYS.filter(has),
     pageSpeedKey: has("PAGESPEED_API_KEY"),
   };

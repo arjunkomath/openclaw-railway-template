@@ -72,6 +72,7 @@ Set these in Railway → Variables. The wrapper writes them into OpenClaw config
 | `HEARTBEAT_MODEL` (e.g. `anthropic/claude-haiku-5-5`) | Heartbeat model for the defaults and every agent with its own heartbeat block, so background runs stop billing at the chat model's rate |
 | `HEARTBEAT_EVERY` (e.g. `2h`) | Heartbeat interval for the same set of agents |
 | `HEARTBEAT_DISABLED_AGENTS` (e.g. `main,vance`) | Turns those agents' heartbeats off (`every: 0m`) |
+| `BROWSER_ENABLED=false` | Turns off the browser tool. It's on by default: the image ships headless Chromium at `/usr/bin/chromium` |
 
 ### Gmail (read + send)
 

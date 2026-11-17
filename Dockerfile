@@ -14,6 +14,17 @@ RUN apt-get update \
     unzip \
   && rm -rf /var/lib/apt/lists/*
 
+# Headless Chromium for OpenClaw's browser tool. Debian ships a real binary
+# (not Ubuntu's snap wrapper), and apt pulls in its shared libraries.
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    chromium \
+    fonts-liberation \
+    fonts-noto-color-emoji \
+    fonts-noto-cjk \
+  && rm -rf /var/lib/apt/lists/* \
+  && chromium --version
+
 RUN npm install -g \
     --allow-scripts=openclaw \
     openclaw@2026.11.3 \
@@ -65,6 +76,7 @@ ENV HOMEBREW_REPOSITORY="/home/linuxbrew/.linuxbrew/Homebrew"
 ENV GOG_HOME=/data/.gogcli
 ENV GOG_KEYRING_BACKEND=file
 ENV DBUS_SESSION_BUS_ADDRESS=disabled:
+ENV CHROMIUM_PATH=/usr/bin/chromium
 ENV PORT=8080
 ENV OPENCLAW_ENTRY=/usr/local/lib/node_modules/openclaw/dist/entry.js
 ENV OPENCLAW_SUPERVISOR_MODE=external

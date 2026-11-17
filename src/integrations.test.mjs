@@ -54,3 +54,27 @@ test("status reports search and PageSpeed keys without values", () => {
   assert.deepEqual(status.webSearchKeys, ["BRAVE_API_KEY"]);
   assert.equal(status.pageSpeedKey, true);
 });
+
+test("baked-in Chromium turns on the headless browser tool", () => {
+  const patches = integrationPatches({ CHROMIUM_PATH: "/usr/bin/chromium" });
+  assert.deepEqual(
+    Object.fromEntries(patches.map((p) => [p.path, p.value])),
+    {
+      "browser.enabled": true,
+      "browser.executablePath": "/usr/bin/chromium",
+      "browser.headless": true,
+      "browser.noSandbox": true,
+      "browser.defaultProfile": "openclaw",
+    },
+  );
+  assert.deepEqual(integrationStatus({ CHROMIUM_PATH: "/usr/bin/chromium" }).configured, [
+    "Browser tool (headless Chromium)",
+  ]);
+});
+
+test("BROWSER_ENABLED=false turns the browser tool off", () => {
+  assert.deepEqual(
+    integrationPatches({ CHROMIUM_PATH: "/usr/bin/chromium", BROWSER_ENABLED: "False" }),
+    [{ label: "Browser tool (off)", path: "browser.enabled", value: false }],
+  );
+});
