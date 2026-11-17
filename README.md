@@ -58,6 +58,18 @@ This lets you use a ChatGPT/Codex account or an eligible SuperGrok / X Premium s
 
 The first DM from a new user returns a pairing code — approve it in `/setup` → "Approve Pairing" → Slack.
 
+### More integrations from Railway variables
+
+Set these in Railway → Variables. The wrapper writes them into OpenClaw config on each gateway start, as env references, so the secrets never land in `openclaw.json`. `/setup/api/debug` → `integrations` shows what got picked up.
+
+| Variables | Result |
+| --- | --- |
+| `SLACK_<NAME>_BOT_TOKEN` + `SLACK_<NAME>_APP_TOKEN` | Extra Slack workspace as account `<name>` (Socket Mode). Create the app the same way as above, in that workspace |
+| `BRAIN_MCP_URL` + `BRAIN_API_KEY` | MCP server `brain` (`Authorization: Bearer`) |
+| `SUPABASE_PROJECT_REF` + `SUPABASE_ACCESS_TOKEN` | MCP server `supabase`, read-only |
+| `BRAVE_API_KEY` (or another [web search provider](https://docs.openclaw.ai/tools/web) key) | `web_search` turns on |
+| `PAGESPEED_API_KEY` | Available to the agent's shell as `$PAGESPEED_API_KEY` |
+
 ### Gmail (read + send)
 
 The image ships with [`gog`](https://gogcli.sh), which enables OpenClaw's bundled `gog` skill for Gmail (plus Calendar/Drive if you grant those scopes). Its tokens live on the volume at `/data/.gogcli`.
