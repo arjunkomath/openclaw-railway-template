@@ -63,6 +63,8 @@ ENV HOMEBREW_CELLAR="/home/linuxbrew/.linuxbrew/Cellar"
 ENV HOMEBREW_REPOSITORY="/home/linuxbrew/.linuxbrew/Homebrew"
 
 ENV GOG_HOME=/data/.gogcli
+ENV GOG_KEYRING_BACKEND=file
+ENV DBUS_SESSION_BUS_ADDRESS=disabled:
 ENV PORT=8080
 ENV OPENCLAW_ENTRY=/usr/local/lib/node_modules/openclaw/dist/entry.js
 ENV OPENCLAW_SUPERVISOR_MODE=external

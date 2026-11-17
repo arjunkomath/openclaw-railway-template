@@ -74,26 +74,29 @@ The image ships with [`gog`](https://gogcli.sh), which enables OpenClaw's bundle
 
 Add a Railway variable `GOG_KEYRING_PASSWORD` (e.g. `${{ secret() }}`) and redeploy. gog encrypts stored tokens with it, and the gateway needs it to read them.
 
-**3. Authorize from the Railway console**
+**3. Connect from `/setup`**
 
-Open your service → **Console** and run:
+Go to `/setup` → **Email** → **Connect Gmail**:
+
+1. Upload (or paste) the client JSON from step 1
+2. Enter the Google account email, pick extra services (Calendar/Drive) if wanted, and click **Authorize with Google**
+3. Approve in the Google tab that opens. Google then redirects to a `localhost` page that fails to load — that's expected. Copy that full URL from the address bar, paste it back into `/setup`, and click **Finish**
+
+The gateway restarts to pick up the new account. Then ask the bot something like "summarize my unread email from today" or "email bob@example.com saying I'm running late". Connected accounts are listed in the Email card, with a **Disconnect** button.
+
+<details>
+<summary>Prefer the Railway console?</summary>
 
 ```bash
-gog auth keyring file
-cat > /tmp/client.json   # paste the downloaded JSON, then Ctrl-D
-gog auth credentials /tmp/client.json && rm /tmp/client.json
+gog auth credentials set - < client.json   # or paste the JSON, then Ctrl-D
 gog auth add you@gmail.com --services gmail --remote --step 1
-```
-
-Open the printed `auth_url` in your browser and approve. The browser then fails to load a `localhost` page — that's expected. Copy that full URL from the address bar and run:
-
-```bash
+# open auth_url, approve, copy the localhost URL from the address bar
 gog auth add you@gmail.com --services gmail --remote --step 2 --auth-url '<paste the localhost URL>'
 gog auth list --check
 gog gmail search 'newer_than:1d' --max 3
 ```
 
-If the last command lists mail, ask the bot something like "summarize my unread email from today" or "email bob@example.com saying I'm running late". To also allow Calendar/Drive, use `--services gmail,calendar,drive`.
+</details>
 
 ## Local testing
 

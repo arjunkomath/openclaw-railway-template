@@ -1008,7 +1008,7 @@ function buildOnboardArgs(payload) {
 
 function runCmd(cmd, args, opts = {}) {
   return new Promise((resolve) => {
-    const { autoInputs: _autoInputs, onOutput, stripOutput, ...spawnOpts } = opts;
+    const { autoInputs: _autoInputs, input, onOutput, stripOutput, ...spawnOpts } = opts;
     const proc = childProcess.spawn(cmd, args, {
       ...spawnOpts,
       env: {
@@ -1034,6 +1034,8 @@ function runCmd(cmd, args, opts = {}) {
     });
 
     proc.on("close", (code) => resolve({ code: code ?? 0, output: out }));
+
+    if (input !== undefined) proc.stdin?.end(input);
   });
 }
 
@@ -1332,6 +1334,155 @@ app.post("/setup/api/pairing/approve", requireSetupAuth, async (req, res) => {
     message: "Channel approval failed. Review the log output for details.",
     output,
   });
+});
+
+const GOG_BIN = process.env.GOG_BIN?.trim() || "gog";
+const GMAIL_SERVICES = ["gmail", "calendar", "drive"];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function runGog(args, opts = {}) {
+  const r = await runCmd(GOG_BIN, ["--json", "--no-input", ...args], opts);
+  return { ...r, output: stripAnsi(r.output || "") };
+}
+
+function parseJsonOutput(output) {
+  const start = output.indexOf("{");
+  const end = output.lastIndexOf("}");
+  if (start < 0 || end < start) return null;
+  try {
+    return JSON.parse(output.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+}
+
+function normalizeGmailRequest(body) {
+  const email = String(body?.email || "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return { error: "Enter the Google account email to connect." };
+  const requested = Array.isArray(body?.services) ? body.services : ["gmail"];
+  const services = GMAIL_SERVICES.filter((s) => requested.includes(s));
+  if (!services.includes("gmail")) services.unshift("gmail");
+  return { email, services: services.join(",") };
+}
+
+function requireKeyringPassword(res) {
+  if (process.env.GOG_KEYRING_PASSWORD?.trim()) return true;
+  res.status(400).json({
+    ok: false,
+    error:
+      "GOG_KEYRING_PASSWORD is not set. Add it in Railway Variables (e.g. ${{ secret() }}) and redeploy first.",
+  });
+  return false;
+}
+
+app.get("/setup/api/gmail/status", requireSetupAuth, async (_req, res) => {
+  const keyringPasswordSet = Boolean(process.env.GOG_KEYRING_PASSWORD?.trim());
+  const version = await runCmd(GOG_BIN, ["--version"]);
+  if (version.code !== 0) {
+    return res.json({ ok: true, installed: false, keyringPasswordSet, hasClient: false, accounts: [] });
+  }
+  if (!keyringPasswordSet) {
+    return res.json({ ok: true, installed: true, keyringPasswordSet, hasClient: false, accounts: [] });
+  }
+
+  const [creds, list] = await Promise.all([
+    runGog(["auth", "credentials", "list"]),
+    runGog(["auth", "list", "--check"]),
+  ]);
+  const clients = parseJsonOutput(creds.output)?.clients ?? [];
+  const accounts = (parseJsonOutput(list.output)?.accounts ?? []).map((a) => ({
+    email: a.email,
+    services: a.services ?? [],
+    valid: a.valid !== false && !a.error,
+    error: a.error || "",
+  }));
+
+  res.json({
+    ok: true,
+    installed: true,
+    keyringPasswordSet,
+    hasClient: clients.length > 0,
+    accounts,
+  });
+});
+
+app.post("/setup/api/gmail/client", requireSetupAuth, async (req, res) => {
+  if (!requireKeyringPassword(res)) return;
+  const raw = String(req.body?.clientJson || "").trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return res.status(400).json({ ok: false, error: "That isn't valid JSON. Paste the full file Google downloaded." });
+  }
+  const client = parsed.installed ?? parsed.web;
+  if (!client?.client_id || !client?.client_secret) {
+    return res.status(400).json({
+      ok: false,
+      error: "Missing client_id/client_secret. Download the OAuth client JSON for a Desktop app client.",
+    });
+  }
+
+  const r = await runGog(["auth", "credentials", "set", "-"], { input: raw });
+  if (r.code !== 0) {
+    return res.status(500).json({ ok: false, error: "gog rejected the client file.", output: r.output });
+  }
+  res.json({ ok: true, message: "OAuth client saved." });
+});
+
+app.post("/setup/api/gmail/start", requireSetupAuth, async (req, res) => {
+  if (!requireKeyringPassword(res)) return;
+  const { email, services, error } = normalizeGmailRequest(req.body);
+  if (error) return res.status(400).json({ ok: false, error });
+
+  const r = await runGog([
+    "auth", "add", email, "--services", services, "--remote", "--step", "1", "--force-consent",
+  ]);
+  const authUrl = parseJsonOutput(r.output)?.auth_url;
+  if (r.code !== 0 || !authUrl) {
+    return res.status(500).json({ ok: false, error: "Couldn't start Google authorization.", output: r.output });
+  }
+  res.json({ ok: true, authUrl, services });
+});
+
+app.post("/setup/api/gmail/finish", requireSetupAuth, async (req, res) => {
+  if (!requireKeyringPassword(res)) return;
+  const { email, services, error } = normalizeGmailRequest(req.body);
+  if (error) return res.status(400).json({ ok: false, error });
+
+  const redirectUrl = String(req.body?.redirectUrl || "").trim();
+  let parsed;
+  try {
+    parsed = new URL(redirectUrl);
+  } catch {}
+  if (!parsed || !["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname) || !parsed.searchParams.get("code")) {
+    return res.status(400).json({
+      ok: false,
+      error: "Paste the full localhost URL from your browser's address bar (it contains ?code=...).",
+    });
+  }
+
+  const r = await runGog([
+    "auth", "add", email, "--services", services, "--remote", "--step", "2",
+    "--force-consent", "--auth-url", redirectUrl,
+  ]);
+  if (r.code !== 0) {
+    return res.status(500).json({ ok: false, error: "Google authorization failed.", output: r.output });
+  }
+
+  if (isConfigured()) await restartGateway();
+  res.json({ ok: true, message: `Connected ${email}.` });
+});
+
+app.post("/setup/api/gmail/remove", requireSetupAuth, async (req, res) => {
+  if (!requireKeyringPassword(res)) return;
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return res.status(400).json({ ok: false, error: "Invalid email." });
+  const r = await runGog(["auth", "remove", email, "--force"]);
+  if (r.code !== 0) {
+    return res.status(500).json({ ok: false, error: `Couldn't remove ${email}.`, output: r.output });
+  }
+  res.json({ ok: true, message: `Disconnected ${email}.` });
 });
 
 app.post("/setup/api/reset", requireSetupAuth, async (_req, res) => {
