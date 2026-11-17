@@ -13,7 +13,7 @@ import {
   describeGatewayHealth,
   isGatewayStartupReady,
 } from "./gateway-readiness.js";
-import { costPolicyStatus, heartbeatPatches } from "./cost-policy.js";
+import { costPolicyStatus, disabledHeartbeatAgents, heartbeatPatches } from "./cost-policy.js";
 import { integrationPatches, integrationStatus } from "./integrations.js";
 import { rebuildForwardedHeaders } from "./proxy-headers.js";
 
@@ -317,6 +317,11 @@ async function syncCostPolicy() {
     try {
       entries = JSON.parse(stripAnsi(current.output).trim());
     } catch {}
+  }
+
+  const unknown = disabledHeartbeatAgents(process.env).filter((id) => !(id in (entries ?? {})));
+  if (unknown.length > 0) {
+    log.warn("cost-policy", `HEARTBEAT_DISABLED_AGENTS not found in agents.entries: ${unknown.join(", ")} (known: ${Object.keys(entries ?? {}).sort().join(", ") || "none"})`);
   }
 
   for (const { path: key, value } of heartbeatPatches(process.env, entries)) {
