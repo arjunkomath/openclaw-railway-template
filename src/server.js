@@ -1292,11 +1292,11 @@ app.post("/setup/api/pairing/approve", requireSetupAuth, async (req, res) => {
         error: "Missing channel or code",
       });
   }
-  if (!["telegram", "discord"].includes(channelValue)) {
+  if (!["telegram", "discord", "slack"].includes(channelValue)) {
     return res.status(400).json({
       ok: false,
       code: "invalid_channel",
-      message: "Channel must be Telegram or Discord.",
+      message: "Channel must be Telegram, Discord, or Slack.",
       error: `Invalid channel: ${channelValue}`,
     });
   }

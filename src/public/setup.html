@@ -220,9 +220,9 @@
       async approvePairing() {
         if (this.pairingSubmitting) return;
         const channel = this.pairingChannel.trim().toLowerCase();
-        if (channel !== 'telegram' && channel !== 'discord') {
+        if (!['telegram', 'discord', 'slack'].includes(channel)) {
           this.pairingResult = 'error';
-          this.pairingMessage = 'Choose Telegram or Discord before approving.';
+          this.pairingMessage = 'Choose Telegram, Discord, or Slack before approving.';
           return;
         }
         const code = this.pairingCode.trim();
@@ -526,7 +526,7 @@
               </div>
               <span class="action-title">Approve Channel Access</span>
             </div>
-            <p class="action-desc">Grant DM access to users who have requested access on Telegram or Discord.</p>
+            <p class="action-desc">Grant DM access to users who have requested access on Telegram, Discord, or Slack.</p>
             <button @click="openPairingModal()" :disabled="loading" class="action-btn">
               Approve Channel Access
             </button>
@@ -1004,6 +1004,7 @@ openclaw models set anthropic/claude-sonnet-4-20250514</code></pre>
             <option value="">Select channel...</option>
             <option value="telegram">Telegram</option>
             <option value="discord">Discord</option>
+            <option value="slack">Slack</option>
           </select>
         </div>
         <div class="form-group">

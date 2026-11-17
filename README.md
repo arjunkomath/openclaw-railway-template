@@ -46,6 +46,55 @@ This lets you use a ChatGPT/Codex account or an eligible SuperGrok / X Premium s
 4. Copy the **Bot Token** and paste it into `/setup`
 5. Invite the bot to your server (OAuth2 URL Generator → scopes: `bot`, `applications.commands`; then choose permissions)
 
+### Slack app tokens
+
+1. Create an app at https://api.slack.com/apps → **From scratch**
+2. **Socket Mode** → enable it and generate an **App-Level Token** with the `connections:write` scope (`xapp-...`)
+3. **OAuth & Permissions** → add bot scopes: `app_mentions:read`, `chat:write`, `channels:history`, `groups:history`, `im:history`, `im:read`, `im:write`, `users:read`
+4. **Event Subscriptions** → enable and subscribe to bot events: `app_mention`, `message.channels`, `message.groups`, `message.im`
+5. **App Home** → enable the **Messages Tab** so people can DM the bot
+6. **Install to Workspace** and copy the **Bot User OAuth Token** (`xoxb-...`)
+7. Paste both tokens into `/setup`, then invite the bot to channels with `/invite @your-bot`
+
+The first DM from a new user returns a pairing code — approve it in `/setup` → "Approve Pairing" → Slack.
+
+### Gmail (read + send)
+
+The image ships with [`gog`](https://gogcli.sh), which enables OpenClaw's bundled `gog` skill for Gmail (plus Calendar/Drive if you grant those scopes). Its tokens live on the volume at `/data/.gogcli`.
+
+> The agent gets real access to the mailbox, including sending. Anyone who can message the bot can ask it to read or send mail, and incoming emails can contain prompt-injection text. Use a dedicated mailbox if you can, and keep DM access on pairing.
+
+**1. Create an OAuth client (one time)**
+
+1. In Google Cloud Console, create or pick a project and enable the **Gmail API**
+2. **Google Auth Platform** → configure the consent screen; while it's in *Testing*, add your Gmail address as a test user
+3. **Clients** → **Create client** → type **Desktop app** → download the JSON
+
+**2. Set a keyring password in Railway**
+
+Add a Railway variable `GOG_KEYRING_PASSWORD` (e.g. `${{ secret() }}`) and redeploy. gog encrypts stored tokens with it, and the gateway needs it to read them.
+
+**3. Authorize from the Railway console**
+
+Open your service → **Console** and run:
+
+```bash
+gog auth keyring file
+cat > /tmp/client.json   # paste the downloaded JSON, then Ctrl-D
+gog auth credentials /tmp/client.json && rm /tmp/client.json
+gog auth add you@gmail.com --services gmail --remote --step 1
+```
+
+Open the printed `auth_url` in your browser and approve. The browser then fails to load a `localhost` page — that's expected. Copy that full URL from the address bar and run:
+
+```bash
+gog auth add you@gmail.com --services gmail --remote --step 2 --auth-url '<paste the localhost URL>'
+gog auth list --check
+gog gmail search 'newer_than:1d' --max 3
+```
+
+If the last command lists mail, ask the bot something like "summarize my unread email from today" or "email bob@example.com saying I'm running late". To also allow Calendar/Drive, use `--services gmail,calendar,drive`.
+
 ## Local testing
 
 ```bash
@@ -72,7 +121,7 @@ A: Go to `/setup` on your deployed instance. When prompted for credentials, use 
 
 A: Go back to `/setup` and click the "Open OpenClaw UI" button from there. The setup page passes the required auth token to the UI. Accessing the UI directly without the token will cause connection errors.
 
-**Q: How do I approve pairing for Telegram or Discord?**
+**Q: How do I approve pairing for Telegram, Discord, or Slack?**
 
 A: Go to `/setup` and use the "Approve Pairing" dialog to approve pending pairing requests from your chat channels.
 
