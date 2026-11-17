@@ -13,6 +13,7 @@ import {
   describeGatewayHealth,
   isGatewayStartupReady,
 } from "./gateway-readiness.js";
+import { changedPatches, getPath, readConfigFile } from "./config-diff.js";
 import { costPolicyStatus, disabledHeartbeatAgents, heartbeatPatches } from "./cost-policy.js";
 import { integrationPatches, integrationStatus } from "./integrations.js";
 import { rebuildForwardedHeaders } from "./proxy-headers.js";
@@ -294,7 +295,12 @@ async function syncTrustedProxies() {
 }
 
 async function syncIntegrations() {
-  for (const { label, path: key, value } of integrationPatches(process.env)) {
+  const patches = integrationPatches(process.env);
+  const pending = changedPatches(readConfigFile(configPath()), patches);
+  if (pending.length < patches.length) {
+    log.info("integrations", `${patches.length - pending.length} unchanged, ${pending.length} to apply`);
+  }
+  for (const { label, path: key, value } of pending) {
     const result = await runCmd(
       OPENCLAW_NODE,
       clawArgs(["config", "set", "--json", key, JSON.stringify(value)]),
@@ -308,15 +314,18 @@ async function syncIntegrations() {
 }
 
 async function syncCostPolicy() {
-  let entries = {};
-  const current = await runCmd(
-    OPENCLAW_NODE,
-    clawArgs(["config", "get", "agents.entries"]),
-  );
-  if (current.code === 0) {
-    try {
-      entries = JSON.parse(stripAnsi(current.output).trim());
-    } catch {}
+  const config = readConfigFile(configPath());
+  let entries = getPath(config, "agents.entries") ?? {};
+  if (!config) {
+    const current = await runCmd(
+      OPENCLAW_NODE,
+      clawArgs(["config", "get", "agents.entries"]),
+    );
+    if (current.code === 0) {
+      try {
+        entries = JSON.parse(stripAnsi(current.output).trim());
+      } catch {}
+    }
   }
 
   const unknown = disabledHeartbeatAgents(process.env).filter((id) => !(id in (entries ?? {})));
@@ -324,7 +333,12 @@ async function syncCostPolicy() {
     log.warn("cost-policy", `HEARTBEAT_DISABLED_AGENTS not found in agents.entries: ${unknown.join(", ")} (known: ${Object.keys(entries ?? {}).sort().join(", ") || "none"})`);
   }
 
-  for (const { path: key, value } of heartbeatPatches(process.env, entries)) {
+  const patches = heartbeatPatches(process.env, entries);
+  const pending = changedPatches(config, patches);
+  if (pending.length < patches.length) {
+    log.info("cost-policy", `${patches.length - pending.length} unchanged, ${pending.length} to apply`);
+  }
+  for (const { path: key, value } of pending) {
     const result = await runCmd(
       OPENCLAW_NODE,
       clawArgs(["config", "set", key, value]),
