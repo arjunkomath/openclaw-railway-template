@@ -69,6 +69,8 @@ Set these in Railway → Variables. The wrapper writes them into OpenClaw config
 | `SUPABASE_PROJECT_REF` + `SUPABASE_ACCESS_TOKEN` | MCP server `supabase`, read-only |
 | `BRAVE_API_KEY` (or another [web search provider](https://docs.openclaw.ai/tools/web) key) | `web_search` turns on |
 | `PAGESPEED_API_KEY` | Available to the agent's shell as `$PAGESPEED_API_KEY` |
+| `HEARTBEAT_MODEL` (e.g. `anthropic/claude-haiku-5-5`) | Heartbeat model for the defaults and every agent with its own heartbeat block, so background runs stop billing at the chat model's rate |
+| `HEARTBEAT_EVERY` (e.g. `2h`) | Heartbeat interval for the same set of agents |
 
 ### Gmail (read + send)
 

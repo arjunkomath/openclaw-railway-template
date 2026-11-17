@@ -13,6 +13,7 @@ import {
   describeGatewayHealth,
   isGatewayStartupReady,
 } from "./gateway-readiness.js";
+import { costPolicyStatus, heartbeatPatches } from "./cost-policy.js";
 import { integrationPatches, integrationStatus } from "./integrations.js";
 import { rebuildForwardedHeaders } from "./proxy-headers.js";
 
@@ -306,6 +307,31 @@ async function syncIntegrations() {
   }
 }
 
+async function syncCostPolicy() {
+  let entries = {};
+  const current = await runCmd(
+    OPENCLAW_NODE,
+    clawArgs(["config", "get", "agents.entries"]),
+  );
+  if (current.code === 0) {
+    try {
+      entries = JSON.parse(stripAnsi(current.output).trim());
+    } catch {}
+  }
+
+  for (const { path: key, value } of heartbeatPatches(process.env, entries)) {
+    const result = await runCmd(
+      OPENCLAW_NODE,
+      clawArgs(["config", "set", key, value]),
+    );
+    if (result.code === 0) {
+      log.info("cost-policy", `${key} = ${value}`);
+    } else {
+      log.warn("cost-policy", `${key} failed (exit=${result.code}): ${stripAnsi(result.output).trim()}`);
+    }
+  }
+}
+
 let gatewayProc = null;
 let gatewayStarting = null;
 let shuttingDown = false;
@@ -508,6 +534,7 @@ async function ensureGatewayRunning() {
       await syncTrustedProxies();
       await syncAllowedOrigins();
       await syncIntegrations();
+      await syncCostPolicy();
       await startGateway();
       const ready = await waitForGatewayReady({ timeoutMs: 60_000 });
       if (!ready) {
@@ -1288,6 +1315,7 @@ app.get("/setup/api/debug", requireSetupAuth, async (_req, res) => {
       railwayCommit: process.env.RAILWAY_GIT_COMMIT_SHA || null,
     },
     integrations: integrationStatus(process.env),
+    costPolicy: costPolicyStatus(process.env),
     openclaw: {
       entry: OPENCLAW_ENTRY,
       node: OPENCLAW_NODE,
