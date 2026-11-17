@@ -13,6 +13,7 @@ import {
   describeGatewayHealth,
   isGatewayStartupReady,
 } from "./gateway-readiness.js";
+import { integrationPatches, integrationStatus } from "./integrations.js";
 import { rebuildForwardedHeaders } from "./proxy-headers.js";
 
 const PORT = Number.parseInt(process.env.PORT ?? "8080", 10);
@@ -291,6 +292,20 @@ async function syncTrustedProxies() {
   log.info("gateway", `set trustedProxies to ${JSON.stringify(expected)}`);
 }
 
+async function syncIntegrations() {
+  for (const { label, path: key, value } of integrationPatches(process.env)) {
+    const result = await runCmd(
+      OPENCLAW_NODE,
+      clawArgs(["config", "set", "--json", key, JSON.stringify(value)]),
+    );
+    if (result.code === 0) {
+      log.info("integrations", `${label} configured at ${key}`);
+    } else {
+      log.warn("integrations", `${label} failed (exit=${result.code}): ${stripAnsi(result.output).trim()}`);
+    }
+  }
+}
+
 let gatewayProc = null;
 let gatewayStarting = null;
 let shuttingDown = false;
@@ -492,6 +507,7 @@ async function ensureGatewayRunning() {
     gatewayStarting = (async () => {
       await syncTrustedProxies();
       await syncAllowedOrigins();
+      await syncIntegrations();
       await startGateway();
       const ready = await waitForGatewayReady({ timeoutMs: 60_000 });
       if (!ready) {
@@ -1271,6 +1287,7 @@ app.get("/setup/api/debug", requireSetupAuth, async (_req, res) => {
       ),
       railwayCommit: process.env.RAILWAY_GIT_COMMIT_SHA || null,
     },
+    integrations: integrationStatus(process.env),
     openclaw: {
       entry: OPENCLAW_ENTRY,
       node: OPENCLAW_NODE,
