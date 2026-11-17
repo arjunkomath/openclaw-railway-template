@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { costPolicyStatus, heartbeatPatches } from "./cost-policy.js";
+import {
+  costPolicyStatus,
+  disabledHeartbeatAgents,
+  heartbeatPatches,
+} from "./cost-policy.js";
 
 test("no variables, no patches", () => {
   assert.deepEqual(heartbeatPatches({}, { forge: { heartbeat: {} } }), []);
@@ -30,9 +34,30 @@ test("model and interval together, tolerates missing entries", () => {
   ]);
 });
 
+test("disabled agents get a zero interval and skip the other overrides", () => {
+  const patches = heartbeatPatches(
+    { HEARTBEAT_EVERY: "2h", HEARTBEAT_DISABLED_AGENTS: "Vance, main,ghost" },
+    { vance: { heartbeat: {} }, main: {}, forge: { heartbeat: {} } },
+  );
+  assert.deepEqual(patches, [
+    { path: "agents.defaults.heartbeat.every", value: "2h" },
+    { path: "agents.entries.forge.heartbeat.every", value: "2h" },
+    { path: "agents.entries.main.heartbeat.every", value: "0m" },
+    { path: "agents.entries.vance.heartbeat.every", value: "0m" },
+  ]);
+});
+
+test("disabled list is normalized", () => {
+  assert.deepEqual(disabledHeartbeatAgents({ HEARTBEAT_DISABLED_AGENTS: " b,a,,B " }), [
+    "a",
+    "b",
+  ]);
+});
+
 test("status reports what is set", () => {
   assert.deepEqual(costPolicyStatus({ HEARTBEAT_EVERY: "2h" }), {
     HEARTBEAT_MODEL: null,
     HEARTBEAT_EVERY: "2h",
+    HEARTBEAT_DISABLED_AGENTS: [],
   });
 });
