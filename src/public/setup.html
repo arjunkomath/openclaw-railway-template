@@ -38,6 +38,18 @@
       pairingResult: '',
       pairingMessage: '',
       showPairingModal: false,
+      gmail: { installed: true, keyringPasswordSet: true, hasClient: false, accounts: [] },
+      gmailLoaded: false,
+      showGmailModal: false,
+      gmailStep: 'client',
+      gmailClientJson: '',
+      gmailEmail: '',
+      gmailServices: ['gmail'],
+      gmailAuthUrl: '',
+      gmailRedirectUrl: '',
+      gmailBusy: false,
+      gmailResult: '',
+      gmailMessage: '',
       isReady: false,
       exporting: false,
       showExportInfo: false,
@@ -102,6 +114,7 @@
         try {
           const j = await this.httpJson('/setup/api/status');
           this.configured = j.configured;
+          if (j.configured && !this.gmailLoaded) this.loadGmailStatus();
           this.openclawVersion = j.openclawVersion || '';
           this.status = j.configured ? 'Configured - open /openclaw' : 'Not configured - run setup below';
           this.authGroups = j.authGroups || [];
@@ -206,6 +219,103 @@
         } else if (text.includes('[setup] Failed')) {
           this.setupError = 'Setup failed. Review the log below.';
         }
+      },
+
+      async gmailApi(path, body) {
+        const res = await fetch('/setup/api/gmail/' + path, {
+          method: body ? 'POST' : 'GET',
+          credentials: 'same-origin',
+          headers: body ? { 'content-type': 'application/json' } : {},
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        const data = await res.json().catch(() => ({ ok: false, error: 'Unexpected response (' + res.status + ')' }));
+        if (!data.ok && data.output) this.log += '\n[gmail] ' + data.output + '\n';
+        return data;
+      },
+
+      async loadGmailStatus() {
+        const data = await this.gmailApi('status');
+        if (data.ok) this.gmail = data;
+        this.gmailLoaded = true;
+      },
+
+      openGmailModal() {
+        this.gmailStep = this.gmail.hasClient ? 'account' : 'client';
+        this.gmailClientJson = '';
+        this.gmailAuthUrl = '';
+        this.gmailRedirectUrl = '';
+        this.gmailResult = '';
+        this.gmailMessage = '';
+        this.showGmailModal = true;
+      },
+
+      async gmailRun(fn) {
+        if (this.gmailBusy) return;
+        this.gmailBusy = true;
+        this.gmailResult = 'pending';
+        this.gmailMessage = 'Working...';
+        try {
+          await fn();
+        } catch (err) {
+          this.gmailResult = 'error';
+          this.gmailMessage = 'Request failed: ' + err.message;
+        } finally {
+          this.gmailBusy = false;
+        }
+      },
+
+      gmailFail(data) {
+        this.gmailResult = 'error';
+        this.gmailMessage = data.error || 'Something went wrong. Check the log.';
+      },
+
+      async loadGmailClientFile(event) {
+        const file = event.target.files?.[0];
+        if (file) this.gmailClientJson = await file.text();
+      },
+
+      saveGmailClient() {
+        return this.gmailRun(async () => {
+          const data = await this.gmailApi('client', { clientJson: this.gmailClientJson });
+          if (!data.ok) return this.gmailFail(data);
+          this.gmail.hasClient = true;
+          this.gmailResult = '';
+          this.gmailStep = 'account';
+        });
+      },
+
+      startGmailAuth() {
+        return this.gmailRun(async () => {
+          const data = await this.gmailApi('start', { email: this.gmailEmail, services: this.gmailServices });
+          if (!data.ok) return this.gmailFail(data);
+          this.gmailAuthUrl = data.authUrl;
+          this.gmailResult = '';
+          this.gmailStep = 'authorize';
+          window.open(data.authUrl, '_blank', 'noopener');
+        });
+      },
+
+      finishGmailAuth() {
+        return this.gmailRun(async () => {
+          const data = await this.gmailApi('finish', {
+            email: this.gmailEmail,
+            services: this.gmailServices,
+            redirectUrl: this.gmailRedirectUrl,
+          });
+          if (!data.ok) return this.gmailFail(data);
+          this.gmailResult = 'success';
+          this.gmailMessage = data.message;
+          this.gmailStep = 'done';
+          this.log += '\n✓ Gmail: ' + data.message + '\n';
+          await this.loadGmailStatus();
+        });
+      },
+
+      async removeGmailAccount(email) {
+        if (!confirm('Disconnect ' + email + '? The bot will lose access to this mailbox.')) return;
+        const data = await this.gmailApi('remove', { email });
+        this.log += '\n' + (data.ok ? '✓ ' + data.message : '✗ ' + data.error) + '\n';
+        await this.loadGmailStatus();
       },
 
       openPairingModal() {
@@ -545,6 +655,26 @@
             </button>
           </div>
         </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title" style="font-size:1rem">Email</h3>
+        <p class="card-subtitle">Let the bot read and send Gmail (plus Calendar/Drive if you grant them)</p>
+        <div x-show="gmailLoaded && !gmail.installed" x-cloak class="pairing-status pairing-status-error mb-4">gog isn't installed in this image. Rebuild from the latest Dockerfile.</div>
+        <div x-show="gmailLoaded && gmail.installed && !gmail.keyringPasswordSet" x-cloak class="pairing-status pairing-status-error mb-4">
+          Set <code>GOG_KEYRING_PASSWORD</code> in Railway Variables (e.g. <code>${{ secret() }}</code>) and redeploy before connecting.
+        </div>
+        <template x-for="acct in gmail.accounts" :key="acct.email">
+          <div class="action-card mb-4" style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
+            <div>
+              <div class="action-title" x-text="acct.email"></div>
+              <div class="text-xs text-muted" x-text="acct.valid ? 'Connected · ' + acct.services.join(', ') : 'Needs reauthorization: ' + acct.error"></div>
+            </div>
+            <button @click="removeGmailAccount(acct.email)" class="btn btn-close-full" style="margin-top:0;width:auto">Disconnect</button>
+          </div>
+        </template>
+        <button @click="openGmailModal()" :disabled="!gmail.installed || !gmail.keyringPasswordSet" class="action-btn" x-text="gmail.accounts.length ? 'Connect another account' : 'Connect Gmail'"></button>
+        <p class="text-xs text-muted mt-4">Anyone who can message the bot can ask it to read or send mail, and incoming emails can carry prompt-injection text. Prefer a dedicated mailbox and keep DMs on pairing.</p>
       </div>
 
       <div class="card">
@@ -1024,6 +1154,71 @@ openclaw models set anthropic/claude-sonnet-4-20250514</code></pre>
             </span>
           </button>
           <button @click="showPairingModal = false" :disabled="pairingSubmitting" class="btn btn-close-full" style="margin-top:0" x-text="pairingResult === 'success' ? 'Close' : 'Cancel'"></button>
+        </div>
+      </div>
+    </div>
+
+    <div x-show="showGmailModal" x-cloak class="modal-overlay" @click.self="if (!gmailBusy) showGmailModal = false">
+      <div class="modal-card modal-md">
+        <h3 class="modal-title mb-4">Connect Gmail</h3>
+
+        <div x-show="gmailStep === 'client'">
+          <p class="modal-desc">One-time: give gog a Google OAuth client.</p>
+          <ol class="text-sm text-muted mb-4" style="padding-left:1.25rem;line-height:1.6">
+            <li>In <a class="inline-link link-teal" href="https://console.cloud.google.com/apis/library/gmail.googleapis.com" target="_blank" rel="noopener">Google Cloud Console</a>, enable the <strong>Gmail API</strong> (and Calendar/Drive if wanted).</li>
+            <li><strong>Google Auth Platform</strong> → configure the consent screen. While it's in <em>Testing</em>, add your address as a test user.</li>
+            <li><strong>Clients</strong> → <strong>Create client</strong> → type <strong>Desktop app</strong> → download the JSON.</li>
+          </ol>
+          <div class="form-group">
+            <label class="label">Client JSON file</label>
+            <input type="file" accept="application/json,.json" @change="loadGmailClientFile($event)" :disabled="gmailBusy" class="input" />
+          </div>
+          <div class="form-group">
+            <label class="label">…or paste it</label>
+            <textarea x-model="gmailClientJson" :disabled="gmailBusy" rows="4" class="input" style="font-family:monospace;font-size:0.75rem" placeholder='{"installed":{"client_id":"...","client_secret":"..."}}'></textarea>
+          </div>
+        </div>
+
+        <div x-show="gmailStep === 'account'">
+          <div class="form-group">
+            <label class="label">Google account email</label>
+            <input x-model="gmailEmail" :disabled="gmailBusy" type="email" placeholder="you@gmail.com" class="input" @keydown.enter="startGmailAuth()" />
+          </div>
+          <div class="form-group">
+            <label class="label">Access</label>
+            <label class="text-sm" style="display:flex;gap:0.5rem;align-items:center"><input type="checkbox" value="gmail" x-model="gmailServices" disabled /> Gmail (read + send)</label>
+            <label class="text-sm" style="display:flex;gap:0.5rem;align-items:center"><input type="checkbox" value="calendar" x-model="gmailServices" :disabled="gmailBusy" /> Calendar</label>
+            <label class="text-sm" style="display:flex;gap:0.5rem;align-items:center"><input type="checkbox" value="drive" x-model="gmailServices" :disabled="gmailBusy" /> Drive</label>
+          </div>
+          <button x-show="gmail.hasClient" @click="gmailStep = 'client'" :disabled="gmailBusy" class="inline-link link-teal text-xs" style="background:none;border:0;padding:0;cursor:pointer">Replace OAuth client</button>
+        </div>
+
+        <div x-show="gmailStep === 'authorize'">
+          <ol class="text-sm text-muted mb-4" style="padding-left:1.25rem;line-height:1.6">
+            <li>Approve access in the Google tab that just opened (<a class="inline-link link-teal" :href="gmailAuthUrl" target="_blank" rel="noopener">open it again</a>).</li>
+            <li>Google then redirects to a <code>localhost</code> page that fails to load — that's expected.</li>
+            <li>Copy that full URL from the address bar and paste it here.</li>
+          </ol>
+          <div class="form-group">
+            <label class="label">Redirect URL</label>
+            <input x-model="gmailRedirectUrl" :disabled="gmailBusy" type="text" placeholder="http://localhost:.../?state=...&code=..." class="input" @keydown.enter="finishGmailAuth()" />
+          </div>
+        </div>
+
+        <div x-show="gmailStep === 'done'">
+          <p class="modal-desc">Try asking the bot: “summarize my unread email from today”.</p>
+        </div>
+
+        <div x-show="gmailResult" x-cloak role="status" aria-live="polite" class="pairing-status" :class="'pairing-status-' + gmailResult">
+          <span x-show="gmailResult === 'pending'" class="spinner spinner-inline" aria-hidden="true"></span>
+          <span x-text="gmailMessage"></span>
+        </div>
+
+        <div class="btn-pair">
+          <button x-show="gmailStep === 'client'" @click="saveGmailClient()" :disabled="gmailBusy || !gmailClientJson.trim()" class="btn btn-primary">Save client</button>
+          <button x-show="gmailStep === 'account'" @click="startGmailAuth()" :disabled="gmailBusy || !gmailEmail.trim()" class="btn btn-primary">Authorize with Google</button>
+          <button x-show="gmailStep === 'authorize'" @click="finishGmailAuth()" :disabled="gmailBusy || !gmailRedirectUrl.trim()" class="btn btn-primary">Finish</button>
+          <button @click="showGmailModal = false" :disabled="gmailBusy" class="btn btn-close-full" style="margin-top:0" x-text="gmailStep === 'done' ? 'Close' : 'Cancel'"></button>
         </div>
       </div>
     </div>
